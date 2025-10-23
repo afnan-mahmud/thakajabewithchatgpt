@@ -15,17 +15,18 @@ import {
   DollarSign
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { api } from '@/lib/api';
 
 interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   role: 'guest' | 'host' | 'admin';
   totalBookings: number;
   totalSpent: number;
-  joinedAt: string;
-  lastActive: string;
+  createdAt: string;
+  updatedAt: string;
   isActive: boolean;
 }
 
@@ -34,58 +35,7 @@ export default function AdminUsers() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with actual API calls
-  const mockUsers: User[] = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '+8801234567890',
-      role: 'guest',
-      totalBookings: 5,
-      totalSpent: 25000,
-      joinedAt: '2024-01-01',
-      lastActive: '2024-01-20',
-      isActive: true,
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      phone: '+8801234567891',
-      role: 'host',
-      totalBookings: 0,
-      totalSpent: 0,
-      joinedAt: '2024-01-15',
-      lastActive: '2024-01-18',
-      isActive: true,
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      email: 'mike@example.com',
-      phone: '+8801234567892',
-      role: 'guest',
-      totalBookings: 12,
-      totalSpent: 45000,
-      joinedAt: '2023-12-01',
-      lastActive: '2024-01-15',
-      isActive: true,
-    },
-    {
-      id: '4',
-      name: 'Sarah Wilson',
-      email: 'sarah@example.com',
-      phone: '+8801234567893',
-      role: 'host',
-      totalBookings: 0,
-      totalSpent: 0,
-      joinedAt: '2024-01-10',
-      lastActive: '2024-01-12',
-      isActive: false,
-    },
-  ];
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -98,10 +48,17 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      // Mock API call
-      setUsers(mockUsers);
+      setError(null);
+      const response = await api.admin.users({ page: 1, limit: 100 });
+      
+      if (response.success && response.data) {
+        setUsers((response.data as any).users || []);
+      } else {
+        setError(response.message || 'Failed to fetch users');
+      }
     } catch (error) {
       console.error('Failed to fetch users:', error);
+      setError('Failed to fetch users');
     } finally {
       setLoading(false);
     }
@@ -115,7 +72,7 @@ export default function AdminUsers() {
       filtered = filtered.filter(user =>
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.phone.includes(searchTerm)
+        (user.phone && user.phone.includes(searchTerm))
       );
     }
 
@@ -152,14 +109,46 @@ export default function AdminUsers() {
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-red-600">
+              <p className="font-medium">Error loading users</p>
+              <p className="text-sm">{error}</p>
+            </div>
+            <div className="ml-auto">
+              <Button onClick={fetchUsers} variant="outline" size="sm">
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <div className="h-4 bg-gray-200 rounded animate-pulse" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
+            <div className="text-2xl font-bold">{users.length || 0}</div>
             <p className="text-xs text-gray-500 mt-1">All registered users</p>
           </CardContent>
         </Card>
@@ -170,7 +159,7 @@ export default function AdminUsers() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {users.filter(u => u.isActive).length}
+              {users.filter(u => u.isActive).length || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Currently active</p>
           </CardContent>
@@ -182,7 +171,7 @@ export default function AdminUsers() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {users.filter(u => u.role === 'host').length}
+              {users.filter(u => u.role === 'host').length || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Property owners</p>
           </CardContent>
@@ -194,12 +183,13 @@ export default function AdminUsers() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {users.reduce((sum, user) => sum + user.totalBookings, 0)}
+              {users.reduce((sum, user) => sum + (user.totalBookings || 0), 0)}
             </div>
             <p className="text-xs text-gray-500 mt-1">All time bookings</p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -219,9 +209,14 @@ export default function AdminUsers() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredUsers.map((user) => (
-              <div key={user.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Loading users...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredUsers.map((user) => (
+              <div key={user._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-4 mb-2">
@@ -238,21 +233,23 @@ export default function AdminUsers() {
                           <Mail className="h-4 w-4 mr-2" />
                           {user.email}
                         </p>
-                        <p className="text-sm text-gray-600 flex items-center mt-1">
-                          <Phone className="h-4 w-4 mr-2" />
-                          {user.phone}
-                        </p>
+                        {user.phone && (
+                          <p className="text-sm text-gray-600 flex items-center mt-1">
+                            <Phone className="h-4 w-4 mr-2" />
+                            {user.phone}
+                          </p>
+                        )}
                       </div>
                       
                       <div>
                         <p className="text-sm text-gray-600 flex items-center">
                           <Home className="h-4 w-4 mr-2" />
-                          {user.totalBookings} {user.totalBookings === 1 ? 'booking' : 'bookings'}
+                          {user.totalBookings || 0} {(user.totalBookings || 0) === 1 ? 'booking' : 'bookings'}
                         </p>
-                        {user.totalBookings > 0 && (
+                        {(user.totalBookings || 0) > 0 && (
                           <p className="text-sm text-gray-600 flex items-center mt-1">
                             <DollarSign className="h-4 w-4 mr-2" />
-                            ৳{user.totalSpent.toLocaleString()} spent
+                            ৳{(user.totalSpent || 0).toLocaleString()} spent
                           </p>
                         )}
                       </div>
@@ -261,11 +258,11 @@ export default function AdminUsers() {
                     <div className="flex items-center space-x-4 mt-4 text-sm text-gray-500">
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 mr-1" />
-                        Joined: {format(new Date(user.joinedAt), 'MMM dd, yyyy')}
+                        Joined: {format(new Date(user.createdAt), 'MMM dd, yyyy')}
                       </div>
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 mr-1" />
-                        Last active: {format(new Date(user.lastActive), 'MMM dd, yyyy')}
+                        Last updated: {format(new Date(user.updatedAt), 'MMM dd, yyyy')}
                       </div>
                     </div>
                   </div>
@@ -279,12 +276,13 @@ export default function AdminUsers() {
               </div>
             ))}
             
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No users found matching your criteria.
-              </div>
-            )}
-          </div>
+              {filteredUsers.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No users found matching your criteria.
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

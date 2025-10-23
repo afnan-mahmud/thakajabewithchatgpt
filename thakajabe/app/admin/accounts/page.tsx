@@ -18,100 +18,57 @@ import {
   Download
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { api } from '@/lib/api';
 
 interface AccountSummary {
-  totalIncome: number;
+  totalCommission: number;
+  totalPayouts: number;
   totalSpend: number;
-  balance: number;
-  monthlyIncome: number;
-  monthlySpend: number;
+  totalAdjustments: number;
+  netIncome: number;
+  transactionCount: number;
 }
 
 interface LedgerEntry {
-  id: string;
-  type: 'commission' | 'spend' | 'refund' | 'payout';
-  ref: string;
+  _id: string;
+  type: 'commission' | 'payout' | 'spend' | 'adjustment';
+  ref?: {
+    bookingId?: {
+      _id: string;
+      transactionId: string;
+      amountTk: number;
+    };
+    payoutRequestId?: {
+      _id: string;
+      amountTk: number;
+      method: any;
+    };
+  };
   amountTk: number;
   note: string;
   at: string;
-  bookingId?: string;
-  hostId?: string;
 }
 
 export default function AdminAccounts() {
   const [summary, setSummary] = useState<AccountSummary>({
-    totalIncome: 0,
+    totalCommission: 0,
+    totalPayouts: 0,
     totalSpend: 0,
-    balance: 0,
-    monthlyIncome: 0,
-    monthlySpend: 0,
+    totalAdjustments: 0,
+    netIncome: 0,
+    transactionCount: 0,
   });
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [filteredLedger, setFilteredLedger] = useState<LedgerEntry[]>([]);
   const [typeFilter, setTypeFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAddSpend, setShowAddSpend] = useState(false);
   const [newSpend, setNewSpend] = useState({
     amount: '',
     note: '',
   });
-
-  // Mock data - replace with actual API calls
-  const mockSummary: AccountSummary = {
-    totalIncome: 245000,
-    totalSpend: 12500,
-    balance: 232500,
-    monthlyIncome: 45000,
-    monthlySpend: 2500,
-  };
-
-  const mockLedger: LedgerEntry[] = [
-    {
-      id: '1',
-      type: 'commission',
-      ref: 'booking_123',
-      amountTk: 5000,
-      note: 'Commission from booking #123',
-      at: '2024-01-20T10:30:00Z',
-      bookingId: 'booking_123',
-    },
-    {
-      id: '2',
-      type: 'spend',
-      ref: 'expense_001',
-      amountTk: -2000,
-      note: 'Server maintenance',
-      at: '2024-01-19T14:20:00Z',
-    },
-    {
-      id: '3',
-      type: 'commission',
-      ref: 'booking_124',
-      amountTk: 3000,
-      note: 'Commission from booking #124',
-      at: '2024-01-18T16:45:00Z',
-      bookingId: 'booking_124',
-    },
-    {
-      id: '4',
-      type: 'payout',
-      ref: 'payout_001',
-      amountTk: -15000,
-      note: 'Host payout - John Doe',
-      at: '2024-01-17T09:15:00Z',
-      hostId: 'host_001',
-    },
-    {
-      id: '5',
-      type: 'refund',
-      ref: 'booking_125',
-      amountTk: -2500,
-      note: 'Refund for cancelled booking #125',
-      at: '2024-01-16T11:30:00Z',
-      bookingId: 'booking_125',
-    },
-  ];
 
   useEffect(() => {
     fetchData();
@@ -124,11 +81,26 @@ export default function AdminAccounts() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Mock API calls
-      setSummary(mockSummary);
-      setLedger(mockLedger);
+      setError(null);
+      
+      // Fetch account summary
+      const summaryResponse = await api.admin.accounts.summary();
+      if (summaryResponse.success && summaryResponse.data) {
+        setSummary(summaryResponse.data as AccountSummary);
+      } else {
+        setError(summaryResponse.message || 'Failed to fetch account summary');
+      }
+      
+      // Fetch ledger entries
+      const ledgerResponse = await api.admin.accounts.ledger();
+      if (ledgerResponse.success && ledgerResponse.data) {
+        setLedger(ledgerResponse.data as LedgerEntry[]);
+      } else {
+        setError(ledgerResponse.message || 'Failed to fetch ledger entries');
+      }
     } catch (error) {
       console.error('Failed to fetch account data:', error);
+      setError('Failed to fetch account data');
     } finally {
       setLoading(false);
     }
@@ -169,27 +141,22 @@ export default function AdminAccounts() {
 
   const handleAddSpend = async () => {
     try {
-      const newEntry: LedgerEntry = {
-        id: Date.now().toString(),
-        type: 'spend',
-        ref: `expense_${Date.now()}`,
-        amountTk: -parseFloat(newSpend.amount),
+      const response = await api.admin.accounts.addSpend({
+        amountTk: parseFloat(newSpend.amount),
         note: newSpend.note,
-        at: new Date().toISOString(),
-      };
-      
-      setLedger([newEntry, ...ledger]);
-      setNewSpend({ amount: '', note: '' });
-      setShowAddSpend(false);
-      
-      // Update summary
-      setSummary(prev => ({
-        ...prev,
-        totalSpend: prev.totalSpend + parseFloat(newSpend.amount),
-        balance: prev.balance - parseFloat(newSpend.amount),
-      }));
+      });
+
+      if (response.success) {
+        // Refresh data after adding spend
+        await fetchData();
+        setNewSpend({ amount: '', note: '' });
+        setShowAddSpend(false);
+      } else {
+        setError(response.message || 'Failed to add spend entry');
+      }
     } catch (error) {
       console.error('Failed to add spend entry:', error);
+      setError('Failed to add spend entry');
     }
   };
 
@@ -197,7 +164,7 @@ export default function AdminAccounts() {
     const variants = {
       commission: 'bg-green-100 text-green-800',
       spend: 'bg-red-100 text-red-800',
-      refund: 'bg-blue-100 text-blue-800',
+      adjustment: 'bg-blue-100 text-blue-800',
       payout: 'bg-purple-100 text-purple-800',
     };
     return (
@@ -273,19 +240,67 @@ export default function AdminAccounts() {
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-red-600">
+              <p className="font-medium">Error loading account data</p>
+              <p className="text-sm">{error}</p>
+            </div>
+            <div className="ml-auto">
+              <Button onClick={fetchData} variant="outline" size="sm">
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Loading...</CardTitle>
+                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Income</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Total Commission</CardTitle>
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ৳{summary.totalIncome.toLocaleString()}
+              ৳{(summary.totalCommission || 0).toLocaleString()}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              This month: ৳{summary.monthlyIncome.toLocaleString()}
+              From bookings
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Payouts</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              ৳{(summary.totalPayouts || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              To hosts
             </p>
           </CardContent>
         </Card>
@@ -293,48 +308,34 @@ export default function AdminAccounts() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Total Spend</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
+            <TrendingDown className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              ৳{summary.totalSpend.toLocaleString()}
+            <div className="text-2xl font-bold text-orange-600">
+              ৳{(summary.totalSpend || 0).toLocaleString()}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              This month: ৳{summary.monthlySpend.toLocaleString()}
+              Expenses
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Current Balance</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              ৳{summary.balance.toLocaleString()}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Available funds
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Net Profit</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Net Income</CardTitle>
             <DollarSign className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              ৳{(summary.totalIncome - summary.totalSpend).toLocaleString()}
+              ৳{(summary.netIncome || 0).toLocaleString()}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Total profit
+              {summary.transactionCount || 0} transactions
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Ledger Table */}
       <Card>
@@ -350,7 +351,7 @@ export default function AdminAccounts() {
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="commission">Commission</SelectItem>
                   <SelectItem value="spend">Spend</SelectItem>
-                  <SelectItem value="refund">Refund</SelectItem>
+                  <SelectItem value="adjustment">Adjustment</SelectItem>
                   <SelectItem value="payout">Payout</SelectItem>
                 </SelectContent>
               </Select>
@@ -369,8 +370,13 @@ export default function AdminAccounts() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Loading ledger entries...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-2">Date</th>
@@ -382,7 +388,7 @@ export default function AdminAccounts() {
               </thead>
               <tbody>
                 {filteredLedger.map((entry) => (
-                  <tr key={entry.id} className="border-b hover:bg-gray-50">
+                  <tr key={entry._id} className="border-b hover:bg-gray-50">
                     <td className="py-3 text-sm text-gray-600">
                       {format(new Date(entry.at), 'MMM dd, yyyy HH:mm')}
                     </td>
@@ -390,7 +396,9 @@ export default function AdminAccounts() {
                       {getTypeBadge(entry.type)}
                     </td>
                     <td className="py-3 text-sm font-mono text-gray-600">
-                      {entry.ref}
+                      {entry.ref?.bookingId?.transactionId || 
+                       entry.ref?.payoutRequestId?._id?.slice(-8) || 
+                       'N/A'}
                     </td>
                     <td className="py-3 text-sm text-gray-900">
                       {entry.note}
@@ -403,12 +411,13 @@ export default function AdminAccounts() {
               </tbody>
             </table>
             
-            {filteredLedger.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No ledger entries found matching your criteria.
-              </div>
-            )}
-          </div>
+              {filteredLedger.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No ledger entries found matching your criteria.
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

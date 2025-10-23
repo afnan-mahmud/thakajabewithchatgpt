@@ -260,6 +260,13 @@ export const api = {
     rejectHost: (id: string, data: any) => apiClient.post(`/admin/hosts/${id}/reject`, data),
     approveRoom: (id: string, data: any) => apiClient.post(`/admin/rooms/${id}/approve`, data),
     rejectRoom: (id: string, data: any) => apiClient.post(`/admin/rooms/${id}/reject`, data),
+    accounts: {
+      summary: (params?: { from?: string; to?: string }) => apiClient.get('/accounts/summary', params),
+      ledger: (params?: { from?: string; to?: string }) => apiClient.get('/accounts/ledger', params),
+      addSpend: (data: { amountTk: number; note: string }) => apiClient.post('/accounts/spend', data),
+      addAdjustment: (data: { amountTk: number; note: string }) => apiClient.post('/accounts/adjustment', data),
+    },
+    users: (params?: { page?: number; limit?: number }) => apiClient.get('/admin/users', params),
   },
 
   // Host endpoints

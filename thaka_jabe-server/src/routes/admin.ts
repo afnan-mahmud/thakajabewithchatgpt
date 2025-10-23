@@ -321,4 +321,66 @@ router.post('/rooms/:id/reject', requireAdmin, validateBody(roomApprovalSchema),
   }
 });
 
+// @route   GET /api/admin/users
+// @desc    Get all users (admin only)
+// @access  Private (admin)
+router.get('/users', requireAdmin, validateQuery(paginationSchema), async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // Get users with booking statistics
+    const users = await User.find({})
+      .select('-passwordHash')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    // Get booking statistics for each user
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const totalBookings = await Booking.countDocuments({ userId: user._id });
+        const totalSpent = await Booking.aggregate([
+          { $match: { userId: user._id, status: 'confirmed', paymentStatus: 'paid' } },
+          { $group: { _id: null, total: { $sum: '$amountTk' } } }
+        ]);
+        
+        return {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          totalBookings,
+          totalSpent: totalSpent.length > 0 ? totalSpent[0].total : 0,
+          isActive: true // You can add logic to determine if user is active
+        };
+      })
+    );
+
+    const total = await User.countDocuments();
+
+    res.json({
+      success: true,
+      data: {
+        users: usersWithStats,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          pages: Math.ceil(total / Number(limit))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 export default router;
