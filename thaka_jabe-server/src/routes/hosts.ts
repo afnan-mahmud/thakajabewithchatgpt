@@ -1,5 +1,5 @@
 import express from 'express';
-import { HostProfile, User, Room, Booking } from '../models';
+import { HostProfile, User, Room, Booking, AccountLedger, PayoutRequest } from '../models';
 import { requireUser, requireHost, requireAdmin } from '../middleware/auth';
 import { hostApplySchema, hostApprovalSchema, paginationSchema, statusFilterSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
@@ -317,6 +317,186 @@ router.get('/bookings', requireHost, async (req, res) => {
     });
   } catch (error) {
     console.error('Get host bookings error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// @route   GET /api/hosts/balance
+// @desc    Get host balance and earnings summary
+// @access  Private (host)
+router.get('/balance', requireHost, async (req, res) => {
+  try {
+    // Get host profile
+    const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
+    if (!hostProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Host profile not found'
+      });
+    }
+
+    // Get total earnings from confirmed bookings
+    const earningsResult = await Booking.aggregate([
+      { 
+        $match: { 
+          hostId: hostProfile._id, 
+          status: 'confirmed', 
+          paymentStatus: 'paid' 
+        } 
+      },
+      { $group: { _id: null, total: { $sum: '$amountTk' } } }
+    ]);
+    const totalEarnings = earningsResult.length > 0 ? earningsResult[0].total : 0;
+
+    // Get total payouts from ledger
+    const payoutsResult = await AccountLedger.aggregate([
+      { 
+        $match: { 
+          type: 'payout',
+          'ref.payoutRequestId': { $exists: true }
+        } 
+      },
+      { $group: { _id: null, total: { $sum: { $abs: '$amountTk' } } } }
+    ]);
+    const totalPayouts = payoutsResult.length > 0 ? payoutsResult[0].total : 0;
+
+    // Get pending payouts
+    const pendingPayoutsResult = await PayoutRequest.aggregate([
+      { 
+        $match: { 
+          hostId: hostProfile._id, 
+          status: 'pending' 
+        } 
+      },
+      { $group: { _id: null, total: { $sum: '$amountTk' } } }
+    ]);
+    const pendingAmount = pendingPayoutsResult.length > 0 ? pendingPayoutsResult[0].total : 0;
+
+    // Calculate available balance
+    const availableBalance = totalEarnings - totalPayouts - pendingAmount;
+
+    // Get monthly earnings (current month)
+    const currentMonth = new Date();
+    const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+
+    const monthlyEarningsResult = await Booking.aggregate([
+      { 
+        $match: { 
+          hostId: hostProfile._id, 
+          status: 'confirmed', 
+          paymentStatus: 'paid',
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+        } 
+      },
+      { $group: { _id: null, total: { $sum: '$amountTk' } } }
+    ]);
+    const monthlyEarnings = monthlyEarningsResult.length > 0 ? monthlyEarningsResult[0].total : 0;
+
+    res.json({
+      success: true,
+      data: {
+        totalEarnings,
+        availableBalance,
+        pendingAmount,
+        monthlyEarnings,
+        totalPayouts
+      }
+    });
+  } catch (error) {
+    console.error('Host balance error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// @route   GET /api/hosts/transactions
+// @desc    Get host transaction history
+// @access  Private (host)
+router.get('/transactions', requireHost, validateQuery(paginationSchema), async (req, res) => {
+  try {
+    const { page, limit } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // Get host profile
+    const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
+    if (!hostProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Host profile not found'
+      });
+    }
+
+    // Get booking transactions (earnings)
+    const bookingTransactions = await Booking.find({
+      hostId: hostProfile._id,
+      status: 'confirmed',
+      paymentStatus: 'paid'
+    })
+    .populate('userId', 'name email')
+    .populate('roomId', 'title')
+    .select('amountTk createdAt userId roomId')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(Number(limit));
+
+    // Get payout transactions
+    const payoutTransactions = await PayoutRequest.find({
+      hostId: hostProfile._id
+    })
+    .select('amountTk status createdAt method')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(Number(limit));
+
+    // Combine and format transactions
+    const transactions = [
+      ...bookingTransactions.map(booking => ({
+        _id: booking._id,
+        type: 'booking',
+        amount: booking.amountTk,
+        description: `Booking payment - ${booking.roomId.title}`,
+        date: booking.createdAt,
+        status: 'completed',
+        user: booking.userId
+      })),
+      ...payoutTransactions.map(payout => ({
+        _id: payout._id,
+        type: 'payout',
+        amount: -payout.amountTk,
+        description: `Payout to ${payout.method.type} - ${payout.method.accountNo || 'N/A'}`,
+        date: payout.createdAt,
+        status: payout.status
+      }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const total = await Booking.countDocuments({
+      hostId: hostProfile._id,
+      status: 'confirmed',
+      paymentStatus: 'paid'
+    }) + await PayoutRequest.countDocuments({
+      hostId: hostProfile._id
+    });
+
+    res.json({
+      success: true,
+      data: {
+        transactions,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          pages: Math.ceil(total / Number(limit))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Host transactions error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error'

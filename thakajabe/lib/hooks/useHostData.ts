@@ -108,6 +108,47 @@ export interface HostCalendarRoom {
   unavailableDates: string[];
 }
 
+export interface HostBalance {
+  totalEarnings: number;
+  availableBalance: number;
+  pendingAmount: number;
+  monthlyEarnings: number;
+  totalPayouts: number;
+}
+
+export interface HostTransaction {
+  _id: string;
+  type: 'booking' | 'payout';
+  amount: number;
+  description: string;
+  date: string;
+  status: 'completed' | 'pending' | 'approved' | 'rejected';
+  user?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface HostPayoutRequest {
+  _id: string;
+  method: {
+    type: 'bkash' | 'nagad' | 'bank';
+    subtype?: 'personal' | 'merchant' | 'agent';
+    accountNo?: string;
+    bankFields?: {
+      bankName?: string;
+      branchName?: string;
+      accountHolderName?: string;
+      routingNumber?: string;
+    };
+  };
+  amountTk: number;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export function useHostStats() {
   const [stats, setStats] = useState<HostStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -367,4 +408,122 @@ export function useHostCalendar() {
     addUnavailableDates, 
     removeUnavailableDates 
   };
+}
+
+export function useHostBalance() {
+  const [balance, setBalance] = useState<HostBalance | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await api.hosts.balance();
+        
+        if (response.success && response.data) {
+          setBalance(response.data);
+        } else {
+          setError(response.message || 'Failed to fetch balance data');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBalance();
+  }, []);
+
+  return { balance, loading, error };
+}
+
+export function useHostTransactions(params?: { page?: number; limit?: number }) {
+  const [transactions, setTransactions] = useState<HostTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await api.hosts.transactions(params);
+        
+        if (response.success && response.data) {
+          setTransactions(response.data.transactions);
+          setPagination(response.data.pagination);
+        } else {
+          setError(response.message || 'Failed to fetch transactions');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [params?.page, params?.limit]);
+
+  return { transactions, pagination, loading, error };
+}
+
+export function useHostPayouts(params?: { page?: number; limit?: number; status?: string }) {
+  const [payouts, setPayouts] = useState<HostPayoutRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchPayouts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await api.payouts.getMine(params);
+        
+        if (response.success && response.data) {
+          setPayouts(response.data.payoutRequests);
+          setPagination(response.data.pagination);
+        } else {
+          setError(response.message || 'Failed to fetch payout requests');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPayouts();
+  }, [params?.page, params?.limit, params?.status]);
+
+  const requestPayout = async (data: any) => {
+    try {
+      const response = await api.payouts.request(data);
+      
+      if (response.success) {
+        // Refresh payouts
+        const refreshResponse = await api.payouts.getMine(params);
+        if (refreshResponse.success && refreshResponse.data) {
+          setPayouts(refreshResponse.data.payoutRequests);
+          setPagination(refreshResponse.data.pagination);
+        }
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Failed to request payout');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to request payout');
+      throw err;
+    }
+  };
+
+  return { payouts, pagination, loading, error, requestPayout };
 }

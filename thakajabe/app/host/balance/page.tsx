@@ -19,179 +19,52 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
-
-interface PaymentMethod {
-  id: string;
-  type: 'bank_transfer' | 'mobile_banking' | 'cash';
-  provider?: string;
-  accountNumber?: string;
-  mobileNumber?: string;
-  bankName?: string;
-  isDefault: boolean;
-  createdAt: string;
-}
-
-interface PayoutRequest {
-  id: string;
-  method: string;
-  amountTk: number;
-  status: 'pending' | 'approved' | 'rejected';
-  requestedAt: string;
-  processedAt?: string;
-  accountDetails: string;
-}
-
-interface Earnings {
-  totalEarnings: number;
-  availableBalance: number;
-  pendingAmount: number;
-  monthlyEarnings: number;
-  totalPayouts: number;
-}
+import { useHostBalance, useHostTransactions, useHostPayouts, type HostBalance, type HostTransaction, type HostPayoutRequest } from '@/lib/hooks/useHostData';
 
 export default function HostBalance() {
-  const [earnings, setEarnings] = useState<Earnings>({
-    totalEarnings: 0,
-    availableBalance: 0,
-    pendingAmount: 0,
-    monthlyEarnings: 0,
-    totalPayouts: 0,
-  });
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([]);
-  const [showAddMethod, setShowAddMethod] = useState(false);
+  const { balance, loading: balanceLoading, error: balanceError } = useHostBalance();
+  const { transactions, loading: transactionsLoading, error: transactionsError } = useHostTransactions();
+  const { payouts, loading: payoutsLoading, error: payoutsError, requestPayout } = useHostPayouts();
+  
   const [showRequestPayout, setShowRequestPayout] = useState(false);
-  const [newMethod, setNewMethod] = useState({
-    type: 'bank_transfer' as 'bank_transfer' | 'mobile_banking' | 'cash',
-    provider: '',
-    accountNumber: '',
-    mobileNumber: '',
-    bankName: '',
-  });
   const [payoutRequest, setPayoutRequest] = useState({
-    method: '',
-    amount: '',
-  });
-  const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with actual API calls
-  const mockEarnings: Earnings = {
-    totalEarnings: 125000,
-    availableBalance: 45000,
-    pendingAmount: 15000,
-    monthlyEarnings: 25000,
-    totalPayouts: 80000,
-  };
-
-  const mockPaymentMethods: PaymentMethod[] = [
-    {
-      id: '1',
-      type: 'bank_transfer',
-      bankName: 'Dutch-Bangla Bank',
-      accountNumber: '1234567890',
-      isDefault: true,
-      createdAt: '2024-01-01',
-    },
-    {
-      id: '2',
-      type: 'mobile_banking',
-      provider: 'bKash',
-      mobileNumber: '+8801234567890',
-      isDefault: false,
-      createdAt: '2024-01-10',
-    },
-  ];
-
-  const mockPayoutRequests: PayoutRequest[] = [
-    {
-      id: '1',
-      method: 'Dutch-Bangla Bank - 1234567890',
-      amountTk: 25000,
-      status: 'approved',
-      requestedAt: '2024-01-15',
-      processedAt: '2024-01-16',
-      accountDetails: 'Dutch-Bangla Bank - 1234567890',
-    },
-    {
-      id: '2',
-      method: 'bKash - +8801234567890',
-      amountTk: 15000,
-      status: 'pending',
-      requestedAt: '2024-01-20',
-      accountDetails: 'bKash - +8801234567890',
-    },
-  ];
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      // Mock API calls
-      setEarnings(mockEarnings);
-      setPaymentMethods(mockPaymentMethods);
-      setPayoutRequests(mockPayoutRequests);
-    } catch (error) {
-      console.error('Failed to fetch balance data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddPaymentMethod = async () => {
-    if (!newMethod.type || (!newMethod.accountNumber && !newMethod.mobileNumber)) {
-      return;
-    }
-
-    try {
-      const method: PaymentMethod = {
-        id: Date.now().toString(),
-        ...newMethod,
-        isDefault: paymentMethods.length === 0,
-        createdAt: new Date().toISOString(),
-      };
-
-      setPaymentMethods(prev => [...prev, method]);
-      setNewMethod({
-        type: 'bank_transfer',
-        provider: '',
-        accountNumber: '',
-        mobileNumber: '',
+    method: {
+      type: 'bkash' as 'bkash' | 'nagad' | 'bank',
+      accountNo: '',
+      bankFields: {
         bankName: '',
-      });
-      setShowAddMethod(false);
+        branchName: '',
+        accountHolderName: '',
+        routingNumber: ''
+      }
+    },
+    amountTk: 0,
+  });
 
-      // Mock API call
-      console.log('Adding payment method:', method);
-    } catch (error) {
-      console.error('Failed to add payment method:', error);
-    }
-  };
+  const loading = balanceLoading || transactionsLoading || payoutsLoading;
+  const error = balanceError || transactionsError || payoutsError;
 
   const handleRequestPayout = async () => {
-    if (!payoutRequest.method || !payoutRequest.amount) {
+    if (!payoutRequest.method.type || !payoutRequest.amountTk) {
       return;
     }
 
     try {
-      const method = paymentMethods.find(m => m.id === payoutRequest.method);
-      const request: PayoutRequest = {
-        id: Date.now().toString(),
-        method: method ? `${method.bankName || method.provider} - ${method.accountNumber || method.mobileNumber}` : '',
-        amountTk: parseFloat(payoutRequest.amount),
-        status: 'pending',
-        requestedAt: new Date().toISOString(),
-        accountDetails: method ? `${method.bankName || method.provider} - ${method.accountNumber || method.mobileNumber}` : '',
-      };
-
-      setPayoutRequests(prev => [request, ...prev]);
-      setPayoutRequest({ method: '', amount: '' });
+      await requestPayout(payoutRequest);
+      setPayoutRequest({
+        method: {
+          type: 'bkash',
+          accountNo: '',
+          bankFields: {
+            bankName: '',
+            branchName: '',
+            accountHolderName: '',
+            routingNumber: ''
+          }
+        },
+        amountTk: 0,
+      });
       setShowRequestPayout(false);
-
-      // Mock API call
-      console.log('Requesting payout:', request);
     } catch (error) {
       console.error('Failed to request payout:', error);
     }
@@ -212,14 +85,50 @@ export default function HostBalance() {
 
   const getMethodIcon = (type: string) => {
     switch (type) {
-      case 'bank_transfer':
+      case 'bank':
         return <CreditCard className="h-4 w-4" />;
-      case 'mobile_banking':
+      case 'bkash':
+      case 'nagad':
         return <DollarSign className="h-4 w-4" />;
       default:
         return <CreditCard className="h-4 w-4" />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Balance & Payouts</h1>
+            <p className="text-gray-600">Manage your earnings and payment methods</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-gray-600">Loading balance data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Balance & Payouts</h1>
+            <p className="text-gray-600">Manage your earnings and payment methods</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">Error loading balance data: {error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -239,7 +148,7 @@ export default function HostBalance() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ৳{earnings.availableBalance.toLocaleString()}
+              ৳{balance?.availableBalance?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Ready for payout</p>
           </CardContent>
@@ -252,7 +161,7 @@ export default function HostBalance() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              ৳{earnings.totalEarnings.toLocaleString()}
+              ৳{balance?.totalEarnings?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">All time</p>
           </CardContent>
@@ -265,7 +174,7 @@ export default function HostBalance() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              ৳{earnings.pendingAmount.toLocaleString()}
+              ৳{balance?.pendingAmount?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Processing</p>
           </CardContent>
@@ -278,7 +187,7 @@ export default function HostBalance() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              ৳{earnings.monthlyEarnings.toLocaleString()}
+              ৳{balance?.monthlyEarnings?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Current month</p>
           </CardContent>
@@ -286,130 +195,6 @@ export default function HostBalance() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Payment Methods */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Payment Methods</CardTitle>
-              <Dialog open={showAddMethod} onOpenChange={setShowAddMethod}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Method
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Payment Method</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Payment Type</Label>
-                      <Select value={newMethod.type} onValueChange={(value: any) => setNewMethod(prev => ({ ...prev, type: value }))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                          <SelectItem value="mobile_banking">Mobile Banking</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {newMethod.type === 'bank_transfer' && (
-                      <>
-                        <div>
-                          <Label>Bank Name</Label>
-                          <Input
-                            value={newMethod.bankName}
-                            onChange={(e) => setNewMethod(prev => ({ ...prev, bankName: e.target.value }))}
-                            placeholder="e.g., Dutch-Bangla Bank"
-                          />
-                        </div>
-                        <div>
-                          <Label>Account Number</Label>
-                          <Input
-                            value={newMethod.accountNumber}
-                            onChange={(e) => setNewMethod(prev => ({ ...prev, accountNumber: e.target.value }))}
-                            placeholder="Enter account number"
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {newMethod.type === 'mobile_banking' && (
-                      <>
-                        <div>
-                          <Label>Provider</Label>
-                          <Select value={newMethod.provider} onValueChange={(value) => setNewMethod(prev => ({ ...prev, provider: value }))}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select provider" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="bKash">bKash</SelectItem>
-                              <SelectItem value="Nagad">Nagad</SelectItem>
-                              <SelectItem value="Rocket">Rocket</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Mobile Number</Label>
-                          <Input
-                            value={newMethod.mobileNumber}
-                            onChange={(e) => setNewMethod(prev => ({ ...prev, mobileNumber: e.target.value }))}
-                            placeholder="+8801234567890"
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setShowAddMethod(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleAddPaymentMethod}>
-                        Add Method
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {paymentMethods.map((method) => (
-                <div key={method.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    {getMethodIcon(method.type)}
-                    <div>
-                      <p className="font-medium text-sm">
-                        {method.bankName || method.provider}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {method.accountNumber || method.mobileNumber}
-                      </p>
-                    </div>
-                    {method.isDefault && (
-                      <Badge variant="outline" className="text-xs">
-                        Default
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              {paymentMethods.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <CreditCard className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No payment methods added</p>
-                  <p className="text-sm">Add a payment method to receive payouts</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Payout Requests */}
         <Card>
           <CardHeader>
@@ -417,7 +202,7 @@ export default function HostBalance() {
               <CardTitle>Payout Requests</CardTitle>
               <Dialog open={showRequestPayout} onOpenChange={setShowRequestPayout}>
                 <DialogTrigger asChild>
-                  <Button size="sm" disabled={earnings.availableBalance <= 0 || paymentMethods.length === 0}>
+                  <Button size="sm" disabled={(balance?.availableBalance || 0) <= 0}>
                     <DollarSign className="h-4 w-4 mr-2" />
                     Request Payout
                   </Button>
@@ -430,37 +215,83 @@ export default function HostBalance() {
                     <div>
                       <Label>Available Balance</Label>
                       <p className="text-2xl font-bold text-green-600">
-                        ৳{earnings.availableBalance.toLocaleString()}
+                        ৳{balance?.availableBalance?.toLocaleString() || 0}
                       </p>
                     </div>
                     
                     <div>
-                      <Label>Payment Method</Label>
-                      <Select value={payoutRequest.method} onValueChange={(value) => setPayoutRequest(prev => ({ ...prev, method: value }))}>
+                      <Label>Payment Method Type</Label>
+                      <Select value={payoutRequest.method.type} onValueChange={(value: any) => setPayoutRequest(prev => ({ ...prev, method: { ...prev.method, type: value } }))}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select payment method" />
                         </SelectTrigger>
                         <SelectContent>
-                          {paymentMethods.map((method) => (
-                            <SelectItem key={method.id} value={method.id}>
-                              {method.bankName || method.provider} - {method.accountNumber || method.mobileNumber}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="bkash">bKash</SelectItem>
+                          <SelectItem value="nagad">Nagad</SelectItem>
+                          <SelectItem value="bank">Bank Transfer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {(payoutRequest.method.type === 'bkash' || payoutRequest.method.type === 'nagad') && (
+                      <div>
+                        <Label>Account Number</Label>
+                        <Input
+                          value={payoutRequest.method.accountNo}
+                          onChange={(e) => setPayoutRequest(prev => ({ ...prev, method: { ...prev.method, accountNo: e.target.value } }))}
+                          placeholder="Enter account number"
+                        />
+                      </div>
+                    )}
+
+                    {payoutRequest.method.type === 'bank' && (
+                      <>
+                        <div>
+                          <Label>Bank Name</Label>
+                          <Input
+                            value={payoutRequest.method.bankFields.bankName}
+                            onChange={(e) => setPayoutRequest(prev => ({ ...prev, method: { ...prev.method, bankFields: { ...prev.method.bankFields, bankName: e.target.value } } }))}
+                            placeholder="Enter bank name"
+                          />
+                        </div>
+                        <div>
+                          <Label>Branch Name</Label>
+                          <Input
+                            value={payoutRequest.method.bankFields.branchName}
+                            onChange={(e) => setPayoutRequest(prev => ({ ...prev, method: { ...prev.method, bankFields: { ...prev.method.bankFields, branchName: e.target.value } } }))}
+                            placeholder="Enter branch name"
+                          />
+                        </div>
+                        <div>
+                          <Label>Account Holder Name</Label>
+                          <Input
+                            value={payoutRequest.method.bankFields.accountHolderName}
+                            onChange={(e) => setPayoutRequest(prev => ({ ...prev, method: { ...prev.method, bankFields: { ...prev.method.bankFields, accountHolderName: e.target.value } } }))}
+                            placeholder="Enter account holder name"
+                          />
+                        </div>
+                        <div>
+                          <Label>Account Number</Label>
+                          <Input
+                            value={payoutRequest.method.accountNo}
+                            onChange={(e) => setPayoutRequest(prev => ({ ...prev, method: { ...prev.method, accountNo: e.target.value } }))}
+                            placeholder="Enter account number"
+                          />
+                        </div>
+                      </>
+                    )}
                     
                     <div>
                       <Label>Amount (Tk)</Label>
                       <Input
                         type="number"
-                        value={payoutRequest.amount}
-                        onChange={(e) => setPayoutRequest(prev => ({ ...prev, amount: e.target.value }))}
+                        value={payoutRequest.amountTk || ''}
+                        onChange={(e) => setPayoutRequest(prev => ({ ...prev, amountTk: parseFloat(e.target.value) || 0 }))}
                         placeholder="Enter amount"
-                        max={earnings.availableBalance}
+                        max={balance?.availableBalance || 0}
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        Maximum: ৳{earnings.availableBalance.toLocaleString()}
+                        Maximum: ৳{balance?.availableBalance?.toLocaleString() || 0}
                       </p>
                     </div>
                     
@@ -468,7 +299,7 @@ export default function HostBalance() {
                       <Button variant="outline" onClick={() => setShowRequestPayout(false)}>
                         Cancel
                       </Button>
-                      <Button onClick={handleRequestPayout} disabled={!payoutRequest.method || !payoutRequest.amount}>
+                      <Button onClick={handleRequestPayout} disabled={!payoutRequest.method.type || !payoutRequest.amountTk}>
                         Request Payout
                       </Button>
                     </div>
@@ -479,28 +310,33 @@ export default function HostBalance() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {payoutRequests.map((request) => (
-                <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
+              {payouts.map((request) => (
+                <div key={request._id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="font-medium text-sm">Request #{request.id}</span>
+                      <span className="font-medium text-sm">Request #{request._id.slice(-8)}</span>
                       {getStatusBadge(request.status)}
                     </div>
-                    <p className="text-sm text-gray-600">{request.method}</p>
+                    <p className="text-sm text-gray-600">
+                      {request.method.type === 'bank' 
+                        ? `${request.method.bankFields?.bankName} - ${request.method.accountNo}`
+                        : `${request.method.type.toUpperCase()} - ${request.method.accountNo}`
+                      }
+                    </p>
                     <p className="text-lg font-semibold">৳{request.amountTk.toLocaleString()}</p>
                     <p className="text-xs text-gray-500">
-                      Requested: {format(new Date(request.requestedAt), 'MMM dd, yyyy')}
+                      Requested: {format(new Date(request.createdAt), 'MMM dd, yyyy')}
                     </p>
-                    {request.processedAt && (
+                    {request.status === 'approved' && (
                       <p className="text-xs text-gray-500">
-                        Processed: {format(new Date(request.processedAt), 'MMM dd, yyyy')}
+                        Processed: {format(new Date(request.updatedAt), 'MMM dd, yyyy')}
                       </p>
                     )}
                   </div>
                 </div>
               ))}
               
-              {payoutRequests.length === 0 && (
+              {payouts.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                   <p>No payout requests</p>
@@ -519,14 +355,8 @@ export default function HostBalance() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Mock transaction data */}
-            {[
-              { id: '1', type: 'booking', amount: 8000, description: 'Booking payment - Luxury Apartment', date: '2024-01-20', status: 'completed' },
-              { id: '2', type: 'payout', amount: -25000, description: 'Payout to Dutch-Bangla Bank', date: '2024-01-18', status: 'completed' },
-              { id: '3', type: 'booking', amount: 5500, description: 'Booking payment - Cozy Studio', date: '2024-01-15', status: 'completed' },
-              { id: '4', type: 'payout', amount: -15000, description: 'Payout to bKash', date: '2024-01-10', status: 'completed' },
-            ].map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+            {transactions.map((transaction) => (
+              <div key={transaction._id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                 <div className="flex items-center space-x-3">
                   {transaction.type === 'booking' ? (
                     <CheckCircle className="h-5 w-5 text-green-500" />
@@ -550,6 +380,14 @@ export default function HostBalance() {
                 </div>
               </div>
             ))}
+            
+            {transactions.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>No transactions yet</p>
+                <p className="text-sm">Your transaction history will appear here</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

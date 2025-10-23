@@ -273,6 +273,8 @@ export const api = {
     updateRoom: (id: string, data: any) => apiClient.put(`/hosts/rooms/${id}`, data),
     deleteRoom: (id: string) => apiClient.delete(`/hosts/rooms/${id}`),
     getUnavailableDates: <T = any>() => apiClient.get<T>('/rooms/hosts/rooms/unavailable'),
+    balance: <T = any>() => apiClient.get<T>('/hosts/balance'),
+    transactions: <T = any>(params?: { page?: number; limit?: number }) => apiClient.get<T>('/hosts/transactions', params),
     apply: (data: {
       displayName: string;
       phone: string;
@@ -294,5 +296,13 @@ export const api = {
       apiClient.post(`/messages/threads/${threadId}`, data),
     createThread: (data: { roomId: string; userId: string }) =>
       apiClient.post('/messages/threads', data),
+  },
+
+  // Payouts
+  payouts: {
+    getMine: <T = any>(params?: { page?: number; limit?: number; status?: string }) =>
+      apiClient.get<T>('/payouts/mine', params),
+    request: (data: any) => apiClient.post('/payouts/request', data),
+    get: <T = any>(id: string) => apiClient.get<T>(`/payouts/${id}`),
   },
 };
