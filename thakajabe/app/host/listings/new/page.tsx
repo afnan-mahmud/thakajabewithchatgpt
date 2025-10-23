@@ -17,7 +17,9 @@ import {
   MapPin,
   Home,
   DollarSign,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -42,6 +44,13 @@ interface RoomFormData {
   unavailableDates: string[];
 }
 
+interface UploadedImage {
+  url: string;
+  w: number;
+  h: number;
+  file: File;
+}
+
 const AMENITIES_OPTIONS = [
   'WiFi', 'Air Conditioning', 'Heating', 'Kitchen', 'Parking', 'Pool', 'Gym',
   'Laundry', 'TV', 'Refrigerator', 'Microwave', 'Balcony', 'Garden', 'Security',
@@ -61,6 +70,9 @@ export default function NewListing() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newAmenity, setNewAmenity] = useState('');
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   
   const [formData, setFormData] = useState<RoomFormData>({
     title: '',
@@ -93,22 +105,77 @@ export default function NewListing() {
     handleInputChange('amenities', formData.amenities.filter(a => a !== amenity));
   };
 
-  const handleImageUrlChange = (index: number, field: 'url' | 'w' | 'h', value: string | number) => {
-    const newImages = [...formData.images];
-    newImages[index] = {
-      ...newImages[index],
-      [field]: field === 'url' ? value : Number(value)
-    };
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const fileArray = Array.from(files);
+    const remainingSlots = 15 - uploadedImages.length;
+    const filesToUpload = fileArray.slice(0, remainingSlots);
+
+    if (filesToUpload.length === 0) {
+      setError('Maximum 15 images allowed');
+      return;
+    }
+
+    setUploadingImages(true);
+    setError(null);
+
+    try {
+      const uploadPromises = filesToUpload.map(async (file) => {
+        const response = await api.uploads.image(file);
+        if (response.success && response.data) {
+          return {
+            url: (response.data as any).url,
+            w: 800, // Default width
+            h: 600, // Default height
+            file: file
+          };
+        }
+        throw new Error('Upload failed');
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+      setUploadedImages(prev => [...prev, ...uploadedFiles]);
+      
+      // Update form data with uploaded images
+      const newImages = uploadedFiles.map(img => ({ url: img.url, w: img.w, h: img.h }));
+      handleInputChange('images', [...formData.images, ...newImages]);
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Failed to upload images');
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const handleRemoveUploadedImage = (index: number) => {
+    const imageToRemove = uploadedImages[index];
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    
+    // Remove from form data
+    const newImages = formData.images.filter(img => img.url !== imageToRemove.url);
     handleInputChange('images', newImages);
   };
 
-  const handleAddImage = () => {
-    handleInputChange('images', [...formData.images, { url: '', w: 800, h: 600 }]);
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
   };
 
-  const handleRemoveImage = (index: number) => {
-    const newImages = formData.images.filter((_, i) => i !== index);
-    handleInputChange('images', newImages);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageUpload(e.dataTransfer.files);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -119,8 +186,8 @@ export default function NewListing() {
       return;
     }
 
-    if (formData.images.length === 0) {
-      setError('Please add at least one image');
+    if (uploadedImages.length === 0) {
+      setError('Please upload at least one image');
       return;
     }
 
@@ -230,7 +297,7 @@ export default function NewListing() {
               <Label htmlFor="roomType">Room Type *</Label>
               <Select
                 value={formData.roomType}
-                onValueChange={(value) => handleInputChange('roomType', value)}
+                onValueChange={(value: string) => handleInputChange('roomType', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select room type" />
@@ -270,7 +337,7 @@ export default function NewListing() {
               <Switch
                 id="instantBooking"
                 checked={formData.instantBooking}
-                onCheckedChange={(checked) => handleInputChange('instantBooking', checked)}
+                onCheckedChange={(checked: boolean) => handleInputChange('instantBooking', checked)}
               />
               <Label htmlFor="instantBooking">Enable Instant Booking</Label>
             </div>
@@ -322,64 +389,94 @@ export default function NewListing() {
         <Card>
           <CardHeader>
             <CardTitle>Images</CardTitle>
+            <p className="text-sm text-gray-600">
+              Upload up to 15 images of your property. Drag and drop or click to select files.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {formData.images.map((image, index) => (
-              <div key={index} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Image {index + 1}</h4>
+            {/* Upload Area */}
+            <div
+              className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                dragActive
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => handleImageUpload(e.target.files)}
+                className="hidden"
+                id="image-upload"
+                disabled={uploadingImages || uploadedImages.length >= 15}
+              />
+              
+              <label htmlFor="image-upload" className="cursor-pointer">
+                <div className="space-y-2">
+                  <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                    {uploadingImages ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    ) : (
+                      <Upload className="h-6 w-6 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {uploadingImages ? 'Uploading...' : 'Click to upload or drag and drop'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      PNG, JPG, GIF up to 5MB each
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {uploadedImages.length}/15 images uploaded
+                    </p>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handleRemoveImage(index)}
-                    className="text-red-600 hover:text-red-700"
+                    disabled={uploadingImages || uploadedImages.length >= 15}
                   >
-                    <X className="h-4 w-4" />
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Choose Images
                   </Button>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <Label>Image URL *</Label>
-                    <Input
-                      value={image.url}
-                      onChange={(e) => handleImageUrlChange(index, 'url', e.target.value)}
-                      placeholder="https://example.com/image.jpg"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label>Width (px)</Label>
-                    <Input
-                      type="number"
-                      value={image.w}
-                      onChange={(e) => handleImageUrlChange(index, 'w', e.target.value)}
-                      min="1"
-                    />
-                  </div>
-                  <div>
-                    <Label>Height (px)</Label>
-                    <Input
-                      type="number"
-                      value={image.h}
-                      onChange={(e) => handleImageUrlChange(index, 'h', e.target.value)}
-                      min="1"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
+              </label>
+            </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleAddImage}
-              className="w-full"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Image
-            </Button>
+            {/* Uploaded Images Grid */}
+            {uploadedImages.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {uploadedImages.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                      <img
+                        src={URL.createObjectURL(image.file)}
+                        alt={`Uploaded image ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleRemoveUploadedImage(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <div className="mt-1 text-xs text-gray-500 text-center">
+                      {image.file.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

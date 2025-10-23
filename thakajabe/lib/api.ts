@@ -104,6 +104,14 @@ class ApiClient {
     });
   }
 
+  // DELETE request with body
+  async deleteWithBody<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'DELETE',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Upload file
   async upload<T>(endpoint: string, file: File, isPublic: boolean = false): Promise<ApiResponse<T>> {
     const formData = new FormData();
@@ -211,7 +219,7 @@ export const api = {
     delete: (id: string) => apiClient.delete(`/rooms/${id}`),
     getUnavailable: <T = any>(id: string) => apiClient.get<T>(`/rooms/${id}/unavailable`),
     setUnavailable: (id: string, data: { dates: string[] }) => apiClient.post(`/rooms/${id}/unavailable`, data),
-    removeUnavailable: (id: string, data: { dates: string[] }) => apiClient.delete(`/rooms/${id}/unavailable`, data),
+    removeUnavailable: (id: string, data: { dates: string[] }) => apiClient.deleteWithBody(`/rooms/${id}/unavailable`, data),
   },
 
   // Bookings
@@ -281,10 +289,12 @@ export const api = {
     bookings: () => apiClient.get('/hosts/bookings'),
     profile: () => apiClient.get('/hosts/me'),
     updateProfile: (data: any) => apiClient.put('/hosts/me', data),
-    createRoom: (data: any) => apiClient.post('/hosts/rooms', data),
-    updateRoom: (id: string, data: any) => apiClient.put(`/hosts/rooms/${id}`, data),
-    deleteRoom: (id: string) => apiClient.delete(`/hosts/rooms/${id}`),
-    getUnavailableDates: <T = any>() => apiClient.get<T>('/rooms/hosts/rooms/unavailable'),
+    createRoom: (data: any) => apiClient.post('/rooms', data),
+    updateRoom: (id: string, data: any) => apiClient.put(`/rooms/${id}`, data),
+    deleteRoom: (id: string) => apiClient.delete(`/rooms/${id}`),
+    getUnavailableDates: <T = any>() => apiClient.get<T>('/hosts/rooms/unavailable'),
+    setUnavailable: (id: string, data: { dates: string[] }) => apiClient.post(`/rooms/${id}/unavailable`, data),
+    removeUnavailable: (id: string, data: { dates: string[] }) => apiClient.deleteWithBody(`/rooms/${id}/unavailable`, data),
     balance: <T = any>() => apiClient.get<T>('/hosts/balance'),
     transactions: <T = any>(params?: { page?: number; limit?: number }) => apiClient.get<T>('/hosts/transactions', params),
     apply: (data: {

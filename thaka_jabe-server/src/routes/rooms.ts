@@ -21,23 +21,46 @@ const router: express.Router = express.Router();
 // @access  Private (host)
 router.post('/', requireHost, validateBody(roomCreateSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
+    console.log('Room creation request received:', {
+      userId: req.user?.id,
+      body: req.body
+    });
+
     // Get host profile
     const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
     if (!hostProfile) {
+      console.log('Host profile not found for user:', req.user!.id);
       return res.status(404).json({
         success: false,
         message: 'Host profile not found'
       });
     }
 
+    console.log('Host profile found:', hostProfile._id);
+
+    // Calculate commission (10% of base price)
+    const commissionTk = Math.round(req.body.basePriceTk * 0.1);
+    const totalPriceTk = req.body.basePriceTk + commissionTk;
+    console.log('Commission calculated:', commissionTk);
+    console.log('Total price calculated:', totalPriceTk);
+
     // Create room
     const room = new Room({
       hostId: hostProfile._id,
       ...req.body,
+      commissionTk,
+      totalPriceTk,
       status: 'pending'
     });
 
+    console.log('Room object created, saving...');
+    console.log('Room data before save:', {
+      basePriceTk: room.basePriceTk,
+      commissionTk: room.commissionTk,
+      totalPriceTk: room.totalPriceTk
+    });
     await room.save();
+    console.log('Room saved successfully:', room._id);
 
     return res.status(201).json({
       success: true,
@@ -51,6 +74,11 @@ router.post('/', requireHost, validateBody(roomCreateSchema), async (req: Authen
     });
   } catch (error) {
     console.error('Create room error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return res.status(500).json({
       success: false,
       message: 'Internal server error'
