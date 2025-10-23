@@ -12,6 +12,40 @@ import { api } from '@/lib/api';
 import { Room } from '@/lib/store';
 import { useAppStore } from '@/lib/store';
 import { usePixelTracking } from '@/hooks/usePixelTracking';
+
+// Backend room response interface
+interface BackendRoom {
+  _id: string;
+  title: string;
+  description: string;
+  address: string;
+  locationName: string;
+  roomType: 'single' | 'double' | 'family' | 'suite' | 'other';
+  amenities: string[];
+  basePriceTk: number;
+  commissionTk: number;
+  totalPriceTk: number;
+  images: Array<{
+    url: string;
+    w: number;
+    h: number;
+  }>;
+  status: 'pending' | 'approved' | 'rejected';
+  instantBooking: boolean;
+  unavailableDates: string[];
+  hostId: {
+    _id: string;
+    displayName: string;
+    locationName: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface RoomResponse {
+  success: boolean;
+  data: BackendRoom;
+}
 import { 
   Star, 
   MapPin, 
@@ -46,14 +80,44 @@ export default function RoomDetails() {
   const loadRoom = async () => {
     try {
       setLoading(true);
-      const response = await api.rooms.get<{ product: Room }>(roomId);
+      const response = await api.rooms.get<RoomResponse>(roomId);
       if (response.success && response.data) {
-        const roomData = response.data.product;
+        const backendRoom: BackendRoom = response.data;
+        
+        // Map backend data to frontend Room structure
+        const roomData: Room = {
+          id: backendRoom._id,
+          name: backendRoom.title,
+          description: backendRoom.description,
+          price: backendRoom.totalPriceTk,
+          originalPrice: backendRoom.basePriceTk,
+          images: backendRoom.images.map(img => img.url),
+          category: backendRoom.locationName,
+          subcategory: backendRoom.roomType,
+          stock: 1, // Default for rooms
+          ratings: {
+            average: 4.5, // Default rating since not in API yet
+            count: 25, // Default review count
+          },
+          sellerId: backendRoom.hostId._id,
+          hostId: backendRoom.hostId._id,
+          instantBooking: backendRoom.instantBooking,
+          isActive: backendRoom.status === 'approved',
+          isFeatured: false, // Default
+          amenities: backendRoom.amenities,
+          createdAt: backendRoom.createdAt,
+          updatedAt: backendRoom.updatedAt,
+        };
+        
         setRoom(roomData);
         trackRoomView(roomData.id, roomData.price);
+      } else {
+        console.error('Room not found or API error:', response);
+        setRoom(null);
       }
     } catch (error) {
       console.error('Failed to load room:', error);
+      setRoom(null);
     } finally {
       setLoading(false);
     }
@@ -125,12 +189,20 @@ export default function RoomDetails() {
     );
   }
 
-  const amenities = [
-    { icon: Wifi, name: 'Free WiFi' },
-    { icon: Car, name: 'Parking' },
-    { icon: Coffee, name: 'Kitchen' },
-    { icon: Shield, name: 'Security' },
-  ];
+  // Map backend amenities to display format
+  const getAmenityIcon = (amenity: string) => {
+    const lowerAmenity = amenity.toLowerCase();
+    if (lowerAmenity.includes('wifi') || lowerAmenity.includes('internet')) return Wifi;
+    if (lowerAmenity.includes('parking') || lowerAmenity.includes('car')) return Car;
+    if (lowerAmenity.includes('kitchen') || lowerAmenity.includes('cooking')) return Coffee;
+    if (lowerAmenity.includes('security') || lowerAmenity.includes('safe')) return Shield;
+    return Wifi; // Default icon
+  };
+
+  const amenities = room ? room.amenities?.map(amenity => ({
+    icon: getAmenityIcon(amenity),
+    name: amenity
+  })) : [];
 
   return (
     <Layout>
@@ -174,7 +246,7 @@ export default function RoomDetails() {
                     <User className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">Host Name</h3>
+                    <h3 className="font-semibold">{room.hostId ? 'Host' : 'Property Owner'}</h3>
                     <p className="text-sm text-gray-600">Verified Host</p>
                   </div>
                 </div>
@@ -210,7 +282,8 @@ export default function RoomDetails() {
           </div>
 
           {/* Booking Section */}
-          <Card className="sticky bottom-20">
+          <div className="mt-6">
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>৳{room.price.toLocaleString()}</span>
@@ -261,6 +334,7 @@ export default function RoomDetails() {
               </Button>
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
 

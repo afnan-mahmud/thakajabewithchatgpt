@@ -105,15 +105,41 @@ class ApiClient {
   }
 
   // Upload file
-  async upload<T>(endpoint: string, file: File): Promise<ApiResponse<T>> {
+  async upload<T>(endpoint: string, file: File, isPublic: boolean = false): Promise<ApiResponse<T>> {
     const formData = new FormData();
     formData.append('image', file);
 
-    return this.request<T>(endpoint, {
+    const uploadEndpoint = isPublic ? '/uploads/public/image' : endpoint;
+
+    // For file uploads, we need to handle headers differently
+    const url = `${this.baseURL}${uploadEndpoint}`;
+    
+    // Add auth token if available
+    const headers: HeadersInit = {};
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Add pixel cookies for server-side tracking
+    if (typeof window !== 'undefined') {
+      const { fbp, fbc } = getPixelCookies();
+      if (fbp) {
+        headers['x-fbp'] = fbp;
+      }
+      if (fbc) {
+        headers['x-fbc'] = fbc;
+      }
+    }
+
+    const response = await fetch(url, {
       method: 'POST',
       body: formData,
-      headers: {}, // Let browser set Content-Type for FormData
+      headers, // Don't set Content-Type, let browser set it with boundary
     });
+
+    const data = await response.json();
+    return data;
   }
 
   // Upload multiple files
@@ -129,6 +155,20 @@ class ApiClient {
       headers: {}, // Let browser set Content-Type for FormData
     });
   }
+
+  // Set auth token
+  setAuthToken(token: string) {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token);
+    }
+  }
+
+  // Clear auth token
+  clearAuthToken() {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+    }
+  }
 }
 
 export const apiClient = new ApiClient();
@@ -137,7 +177,22 @@ export const apiClient = new ApiClient();
 export const api = {
   // Auth
   auth: {
-    register: (data: { name: string; email: string; password: string }) =>
+    register: (data: { 
+      name: string; 
+      email: string; 
+      password: string; 
+      phone: string;
+      isHost?: boolean;
+      hostData?: {
+        displayName?: string;
+        phone?: string;
+        whatsapp?: string;
+        locationName?: string;
+        locationMapUrl?: string;
+        nidFrontUrl?: string;
+        nidBackUrl?: string;
+      };
+    }) =>
       apiClient.post('/auth/register', data),
     login: (data: { email: string; password: string }) =>
       apiClient.post('/auth/login', data),
@@ -145,15 +200,15 @@ export const api = {
     profile: () => apiClient.get('/auth/profile'),
   },
 
-  // Products/Rooms
+  // Rooms
   rooms: {
     list: <T = any>(params?: { page?: number; limit?: number; category?: string; search?: string }) =>
-      apiClient.get<T>('/products', params),
+      apiClient.get<T>('/rooms/search', params),
     search: <T = any>(queryString: string) => apiClient.get<T>(`/rooms/search?${queryString}`),
-    get: <T = any>(id: string) => apiClient.get<T>(`/products/${id}`),
-    create: (data: any) => apiClient.post('/products', data),
-    update: (id: string, data: any) => apiClient.put(`/products/${id}`, data),
-    delete: (id: string) => apiClient.delete(`/products/${id}`),
+    get: <T = any>(id: string) => apiClient.get<T>(`/rooms/${id}`),
+    create: (data: any) => apiClient.post('/rooms', data),
+    update: (id: string, data: any) => apiClient.put(`/rooms/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/rooms/${id}`),
   },
 
   // Bookings
@@ -174,7 +229,7 @@ export const api = {
 
   // Uploads
   uploads: {
-    image: (file: File) => apiClient.upload('/uploads/image', file),
+    image: (file: File, isPublic: boolean = false) => apiClient.upload('/uploads/image', file, isPublic),
     delete: (filename: string) => apiClient.delete(`/uploads/image/${filename}`),
     // Room images
     roomImages: <T = any>(roomId: string, files: File[]) => apiClient.uploadMultiple<T>(`/uploads/rooms/${roomId}/images`, files),
@@ -193,7 +248,8 @@ export const api = {
   // Admin endpoints
   admin: {
     stats: () => apiClient.get('/admin/stats'),
-    hosts: () => apiClient.get('/admin/hosts'),
+    hosts: (params?: { page?: number; limit?: number; status?: string }) =>
+      apiClient.get('/admin/hosts', { page: params?.page ?? 1, limit: params?.limit ?? 20, status: params?.status }),
     bookings: () => apiClient.get('/admin/bookings'),
     rooms: () => apiClient.get('/admin/rooms'),
     approveHost: (id: string, data: any) => apiClient.post(`/admin/hosts/${id}/approve`, data),
@@ -212,5 +268,14 @@ export const api = {
     createRoom: (data: any) => apiClient.post('/hosts/rooms', data),
     updateRoom: (id: string, data: any) => apiClient.put(`/hosts/rooms/${id}`, data),
     deleteRoom: (id: string) => apiClient.delete(`/hosts/rooms/${id}`),
+    apply: (data: {
+      displayName: string;
+      phone: string;
+      whatsapp: string;
+      locationName: string;
+      locationMapUrl: string;
+      nidFrontUrl: string;
+      nidBackUrl: string;
+    }) => apiClient.post('/hosts/apply', data),
   },
 };

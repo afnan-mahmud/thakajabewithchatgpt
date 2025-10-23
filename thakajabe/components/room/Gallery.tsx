@@ -6,6 +6,13 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { env } from '@/lib/env';
 
+// Helper function to resolve image URLs (supports both relative and absolute URLs)
+const resolveImageSrc = (image: string) => {
+  if (image.startsWith('http://') || image.startsWith('https://')) return image;
+  const normalized = image.startsWith('/') ? image : `/${image}`;
+  return `${env.IMG_BASE_URL}${normalized}`;
+};
+
 interface GalleryProps {
   images: string[];
   alt: string;
@@ -42,7 +49,7 @@ export function Gallery({ images, alt }: GalleryProps) {
       <div className="relative">
         <div className="aspect-video relative rounded-lg overflow-hidden">
           <Image
-            src={`${env.IMG_BASE_URL}${images[currentIndex]}`}
+            src={resolveImageSrc(images[currentIndex])}
             alt={alt}
             fill
             className="object-cover cursor-pointer"
@@ -83,7 +90,7 @@ export function Gallery({ images, alt }: GalleryProps) {
                 }`}
               >
                 <Image
-                  src={`${env.IMG_BASE_URL}${image}`}
+                  src={resolveImageSrc(image)}
                   alt={`${alt} ${index + 1}`}
                   fill
                   className="object-cover"
@@ -109,7 +116,7 @@ export function Gallery({ images, alt }: GalleryProps) {
             
             <div className="relative aspect-video max-h-[80vh]">
               <Image
-                src={`${env.IMG_BASE_URL}${images[currentIndex]}`}
+                src={resolveImageSrc(images[currentIndex])}
                 alt={alt}
                 fill
                 className="object-contain"

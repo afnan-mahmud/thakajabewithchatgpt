@@ -21,6 +21,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { api } from '@/lib/api';
 
 interface Host {
   id: string;
@@ -49,70 +50,16 @@ export default function AdminHosts() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedHost, setSelectedHost] = useState<Host | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with actual API calls
-  const mockHosts: Host[] = [
-    {
-      id: '1',
-      userId: 'user1',
-      userName: 'John Doe',
-      userEmail: 'john@example.com',
-      userPhone: '+8801234567890',
-      displayName: 'John\'s Properties',
-      phone: '+8801234567890',
-      whatsapp: '+8801234567890',
-      locationName: 'Gulshan, Dhaka',
-      locationMapUrl: 'https://maps.google.com/...',
-      nidFrontUrl: '/documents/nid1_front.jpg',
-      nidBackUrl: '/documents/nid1_back.jpg',
-      status: 'approved',
-      propertyCount: 5,
-      totalEarnings: 125000,
-      createdAt: '2024-01-01',
-      lastActive: '2024-01-20',
-    },
-    {
-      id: '2',
-      userId: 'user2',
-      userName: 'Jane Smith',
-      userEmail: 'jane@example.com',
-      userPhone: '+8801234567891',
-      displayName: 'Jane\'s Homestay',
-      phone: '+8801234567891',
-      whatsapp: '+8801234567891',
-      locationName: 'Dhanmondi, Dhaka',
-      locationMapUrl: 'https://maps.google.com/...',
-      nidFrontUrl: '/documents/nid2_front.jpg',
-      nidBackUrl: '/documents/nid2_back.jpg',
-      status: 'pending',
-      propertyCount: 2,
-      totalEarnings: 0,
-      createdAt: '2024-01-15',
-      lastActive: '2024-01-18',
-    },
-    {
-      id: '3',
-      userId: 'user3',
-      userName: 'Mike Johnson',
-      userEmail: 'mike@example.com',
-      userPhone: '+8801234567892',
-      displayName: 'Mike\'s Rentals',
-      phone: '+8801234567892',
-      whatsapp: '+8801234567892',
-      locationName: 'Uttara, Dhaka',
-      locationMapUrl: 'https://maps.google.com/...',
-      nidFrontUrl: '/documents/nid3_front.jpg',
-      nidBackUrl: '/documents/nid3_back.jpg',
-      status: 'rejected',
-      propertyCount: 0,
-      totalEarnings: 0,
-      createdAt: '2024-01-10',
-      lastActive: '2024-01-12',
-    },
-  ];
 
   useEffect(() => {
-    fetchHosts();
+    // Add a small delay to ensure auth token is set
+    const timer = setTimeout(() => {
+      fetchHosts();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -122,10 +69,49 @@ export default function AdminHosts() {
   const fetchHosts = async () => {
     try {
       setLoading(true);
-      // Mock API call
-      setHosts(mockHosts);
+      setError(null);
+      
+      console.log('Fetching hosts...');
+      console.log('Auth token:', localStorage.getItem('auth_token'));
+      
+      const response = await api.admin.hosts({ 
+        page: 1, 
+        limit: 20, 
+        status: statusFilter !== 'all' ? statusFilter : undefined 
+      });
+      
+      console.log('Hosts response:', response);
+      
+      if (response.success && response.data) {
+        // Map backend data to frontend Host interface
+        const hostsData = (response.data as any).hosts.map((host: any) => ({
+          id: host._id,
+          userId: host.userId?._id || '',
+          userName: host.userId?.name || '',
+          userEmail: host.userId?.email || '',
+          userPhone: host.userId?.phone || '',
+          displayName: host.displayName || '',
+          phone: host.phone || '',
+          whatsapp: host.whatsapp || '',
+          locationName: host.locationName || '',
+          locationMapUrl: host.locationMapUrl || '',
+          nidFrontUrl: host.nidFrontUrl || '',
+          nidBackUrl: host.nidBackUrl || '',
+          status: host.status || 'pending',
+          propertyCount: host.propertyCount || 0,
+          totalEarnings: host.totalEarnings || 0,
+          createdAt: host.createdAt || '',
+          lastActive: host.updatedAt || host.createdAt || '',
+        }));
+        
+        setHosts(hostsData);
+      } else {
+        setError(response.message || 'Failed to fetch hosts');
+      }
     } catch (error) {
       console.error('Failed to fetch hosts:', error);
+      console.error('Error details:', error);
+      setError('Failed to fetch hosts. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -154,27 +140,35 @@ export default function AdminHosts() {
 
   const handleApprove = async (hostId: string) => {
     try {
-      // Mock API call
-      setHosts(hosts.map(host => 
-        host.id === hostId 
-          ? { ...host, status: 'approved' as const }
-          : host
-      ));
+      const response = await api.admin.approveHost(hostId, { status: 'approved' });
+      
+      if (response.success) {
+        // Refetch the list to get updated data
+        await fetchHosts();
+        alert('Host approved successfully!');
+      } else {
+        alert('Failed to approve host: ' + (response.message || 'Unknown error'));
+      }
     } catch (error) {
       console.error('Failed to approve host:', error);
+      alert('Failed to approve host. Please try again.');
     }
   };
 
   const handleReject = async (hostId: string) => {
     try {
-      // Mock API call
-      setHosts(hosts.map(host => 
-        host.id === hostId 
-          ? { ...host, status: 'rejected' as const }
-          : host
-      ));
+      const response = await api.admin.rejectHost(hostId, { status: 'rejected' });
+      
+      if (response.success) {
+        // Refetch the list to get updated data
+        await fetchHosts();
+        alert('Host rejected successfully!');
+      } else {
+        alert('Failed to reject host: ' + (response.message || 'Unknown error'));
+      }
     } catch (error) {
       console.error('Failed to reject host:', error);
+      alert('Failed to reject host. Please try again.');
     }
   };
 
@@ -229,8 +223,23 @@ export default function AdminHosts() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredHosts.map((host) => (
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-2">Loading hosts...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button onClick={fetchHosts}>Try Again</Button>
+            </div>
+          ) : filteredHosts.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No hosts found</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredHosts.map((host) => (
               <div key={host.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -352,13 +361,39 @@ export default function AdminHosts() {
                               <div>
                                 <p className="text-sm font-medium text-gray-600 mb-2">NID Front</p>
                                 <div className="bg-gray-100 p-4 rounded-lg text-center">
-                                  <p className="text-sm text-gray-500">Document Preview</p>
+                                  {host.nidFrontUrl ? (
+                                    <img 
+                                      src={host.nidFrontUrl} 
+                                      alt="NID Front" 
+                                      className="max-w-full h-32 object-contain mx-auto rounded"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling.style.display = 'block';
+                                      }}
+                                    />
+                                  ) : null}
+                                  <p className="text-sm text-gray-500" style={{ display: host.nidFrontUrl ? 'none' : 'block' }}>
+                                    Document Preview
+                                  </p>
                                 </div>
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-gray-600 mb-2">NID Back</p>
                                 <div className="bg-gray-100 p-4 rounded-lg text-center">
-                                  <p className="text-sm text-gray-500">Document Preview</p>
+                                  {host.nidBackUrl ? (
+                                    <img 
+                                      src={host.nidBackUrl} 
+                                      alt="NID Back" 
+                                      className="max-w-full h-32 object-contain mx-auto rounded"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling.style.display = 'block';
+                                      }}
+                                    />
+                                  ) : null}
+                                  <p className="text-sm text-gray-500" style={{ display: host.nidBackUrl ? 'none' : 'block' }}>
+                                    Document Preview
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -424,13 +459,8 @@ export default function AdminHosts() {
                 </div>
               </div>
             ))}
-            
-            {filteredHosts.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No hosts found matching your criteria.
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

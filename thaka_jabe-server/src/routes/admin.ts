@@ -80,12 +80,14 @@ router.get('/hosts', requireAdmin, validateQuery(paginationSchema), async (req, 
 
     res.json({
       success: true,
-      data: hosts,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        pages: Math.ceil(total / Number(limit))
+      data: {
+        hosts,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          pages: Math.ceil(total / Number(limit))
+        }
       }
     });
   } catch (error) {

@@ -1,18 +1,18 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../models';
+import { User, HostProfile } from '../models';
 import { registerSchema, loginSchema } from '../schemas';
 import { validateBody } from '../middleware/validateRequest';
 
 const router = express.Router();
 
 // @route   POST /api/auth/register
-// @desc    Register a new user
+// @desc    Register a new user (optionally as host)
 // @access  Public
 router.post('/register', validateBody(registerSchema), async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, isHost, hostData } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -27,7 +27,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Create user
+    // Create user (always start as guest, role will be updated when host is approved)
     const user = new User({
       name,
       email,
@@ -37,6 +37,35 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     });
 
     await user.save();
+
+    // If this is a host registration, create host profile
+    if (isHost && hostData) {
+      try {
+        const hostProfile = new HostProfile({
+          userId: user._id,
+          displayName: hostData.displayName || name,
+          phone: hostData.phone || phone,
+          whatsapp: hostData.whatsapp || phone,
+          locationName: hostData.locationName,
+          locationMapUrl: hostData.locationMapUrl,
+          nidFrontUrl: hostData.nidFrontUrl,
+          nidBackUrl: hostData.nidBackUrl,
+          status: 'pending'
+        });
+
+        await hostProfile.save();
+        console.log('Host profile created successfully');
+      } catch (hostError) {
+        console.error('Error creating host profile:', hostError);
+        // Continue with user creation even if host profile fails
+      }
+    }
+
+    // Check JWT_SECRET configuration
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET env var is not configured');
+      return res.status(500).json({ success: false, message: 'Server configuration error (missing JWT secret)' });
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -67,9 +96,11 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    console.error('Error details:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -97,6 +128,12 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
         success: false,
         message: 'Invalid credentials'
       });
+    }
+
+    // Check JWT_SECRET configuration
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET env var is not configured');
+      return res.status(500).json({ success: false, message: 'Server configuration error (missing JWT secret)' });
     }
 
     // Generate JWT token

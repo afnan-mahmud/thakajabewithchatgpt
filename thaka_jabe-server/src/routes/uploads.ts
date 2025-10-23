@@ -36,6 +36,7 @@ const upload = multer({
 
 // Routes
 router.post('/image', requireUser, upload.single('image'), uploadImage);
+router.post('/public/image', upload.single('image'), uploadImage); // Public route for host applications
 router.delete('/image/:filename', requireUser, deleteImage);
 
 // Room image uploads

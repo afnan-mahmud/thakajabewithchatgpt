@@ -6,10 +6,13 @@ import { AppError } from '../middleware/errorHandler';
 export const uploadImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.file) {
-      return next(new AppError('No image file provided', 400));
+      const error: AppError = new Error('No image file provided');
+      error.statusCode = 400;
+      return next(error);
     }
 
-    const imageUrl = `${process.env.NEXT_PUBLIC_IMG_BASE_URL || 'http://localhost:8080'}/uploads/${req.file.filename}`;
+    const baseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 8080}`;
+    const imageUrl = `${baseUrl.replace(/\/$/, '')}/uploads/${req.file.filename}`;
 
     res.json({
       success: true,
@@ -33,7 +36,9 @@ export const deleteImage = async (req: Request, res: Response, next: NextFunctio
 
     // Check if file exists
     if (!fs.existsSync(filePath)) {
-      return next(new AppError('File not found', 404));
+      const error: AppError = new Error('File not found');
+      error.statusCode = 404;
+      return next(error);
     }
 
     // Delete file

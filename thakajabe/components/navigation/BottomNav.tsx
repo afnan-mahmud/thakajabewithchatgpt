@@ -7,6 +7,8 @@ import { UserMenu } from './UserMenu';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
+const HIDDEN_ROUTES = ['/join-host', '/host', '/admin'];
+
 interface BottomNavProps {
   isAuthenticated?: boolean;
   userRole?: 'admin' | 'host' | 'guest';

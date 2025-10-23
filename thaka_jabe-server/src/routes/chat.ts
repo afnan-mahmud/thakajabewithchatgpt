@@ -11,24 +11,43 @@ const router = express.Router();
 // Initialize Firebase Admin (if not already initialized)
 let db: any = null;
 
-if (!admin.apps.length && process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        project_id: process.env.FIREBASE_PROJECT_ID,
-        client_email: process.env.FIREBASE_CLIENT_EMAIL,
-        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      }),
-      databaseURL: process.env.FIREBASE_DATABASE_URL
-    });
-    db = admin.database();
-    console.log('✅ Firebase Admin initialized successfully');
-  } catch (error) {
-    console.warn('Firebase initialization failed:', error);
+const initializeFirebase = () => {
+  const requiredFirebaseVars = [
+    'FIREBASE_PROJECT_ID',
+    'FIREBASE_CLIENT_EMAIL', 
+    'FIREBASE_PRIVATE_KEY',
+    'FIREBASE_DATABASE_URL'
+  ];
+  
+  const missingVars = requiredFirebaseVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.warn(`⚠️  Firebase initialization skipped - missing environment variables: ${missingVars.join(', ')}`);
+    return false;
   }
-} else if (!process.env.FIREBASE_PROJECT_ID) {
-  console.warn('Firebase credentials not found in environment variables');
-}
+  
+  if (!admin.apps.length) {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          project_id: process.env.FIREBASE_PROJECT_ID,
+          client_email: process.env.FIREBASE_CLIENT_EMAIL,
+          private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+        databaseURL: process.env.FIREBASE_DATABASE_URL
+      });
+      db = admin.database();
+      console.log('✅ Firebase Admin initialized successfully');
+      return true;
+    } catch (error) {
+      console.warn('Firebase initialization failed:', error);
+      return false;
+    }
+  }
+  return true;
+};
+
+initializeFirebase();
 
 // Use the new sanitizer utility
 const sanitizeMessage = (text: string) => {

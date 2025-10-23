@@ -30,6 +30,7 @@ export interface Room {
   instantBooking?: boolean;
   isActive: boolean;
   isFeatured: boolean;
+  amenities?: string[];
   createdAt: string;
   updatedAt: string;
 }

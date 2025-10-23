@@ -1,8 +1,5 @@
 import type { Metadata } from 'next'
-import { TopNav } from '@/components/navigation/TopNav'
-import { BottomNav } from '@/components/navigation/BottomNav'
-import { HeaderSearchBar } from '@/components/navigation/HeaderSearchBar'
-import MobileHeaderBar from '@/components/navigation/MobileHeaderBar'
+import { PublicLayoutShell } from '@/components/layout/PublicLayoutShell'
 
 export const metadata: Metadata = {
   title: 'Thaka Jabe — Find Your Perfect Stay in Bangladesh',
@@ -51,22 +48,12 @@ export default function PublicLayout({
   const userName = undefined;
 
   return (
-    <>
-      <TopNav 
-        isAuthenticated={isAuthenticated}
-        userRole={userRole}
-        userName={userName}
-      />
-      <HeaderSearchBar />
-      <MobileHeaderBar />
-      <main className="min-h-screen pb-20 md:pb-0">
-        {children}
-      </main>
-      <BottomNav 
-        isAuthenticated={isAuthenticated}
-        userRole={userRole}
-        userName={userName}
-      />
-    </>
+    <PublicLayoutShell 
+      isAuthenticated={isAuthenticated}
+      userRole={userRole}
+      userName={userName}
+    >
+      {children}
+    </PublicLayoutShell>
   )
 }

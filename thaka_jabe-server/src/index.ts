@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
 import mongoose from 'mongoose';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
@@ -22,7 +23,30 @@ import eventRoutes from './routes/events';
 import adminRoutes from './routes/admin';
 
 // Load environment variables
-dotenv.config();
+const loadEnvFiles = () => {
+  const envFiles = ['.env.local', '.env'];
+  const loadedVars = new Set<string>();
+  
+  envFiles.forEach((file) => {
+    const result = dotenv.config({ path: path.resolve(process.cwd(), file) });
+    if (result.parsed) {
+      Object.keys(result.parsed).forEach(key => loadedVars.add(key));
+    }
+  });
+  
+  // Check for required environment variables
+  const missingVars = [];
+  if (!process.env.JWT_SECRET) missingVars.push('JWT_SECRET');
+  if (!process.env.MONGODB_URI) missingVars.push('MONGODB_URI');
+  
+  if (missingVars.length > 0) {
+    console.warn(`⚠️  Missing environment variables: ${missingVars.join(', ')}`);
+  }
+  
+  return loadedVars;
+};
+
+loadEnvFiles();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -50,7 +74,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit auth endpoints to 5 requests per windowMs
+  max: 50, // limit auth endpoints to 50 requests per windowMs (increased for testing)
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later.'
@@ -58,7 +82,7 @@ const authLimiter = rateLimit({
 });
 
 app.use(limiter);
-app.use('/api/auth', authLimiter);
+// app.use('/api/auth', authLimiter); // Temporarily disabled for testing
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -69,6 +93,13 @@ app.use(compression());
 
 // Logging middleware
 app.use(morgan('combined'));
+
+// Serve static files from uploads directory
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsDir, {
+  extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
+  fallthrough: false,
+}));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

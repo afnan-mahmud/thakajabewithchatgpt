@@ -5,7 +5,17 @@ export const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(50, 'Name cannot exceed 50 characters'),
   email: z.string().email('Invalid email format'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  phone: z.string().optional(),
+  phone: z.string().min(1, 'Phone number is required'),
+  isHost: z.boolean().optional(),
+  hostData: z.object({
+    displayName: z.string().optional(),
+    phone: z.string().optional(),
+    whatsapp: z.string().optional(),
+    locationName: z.string().optional(),
+    locationMapUrl: z.string().optional(),
+    nidFrontUrl: z.string().optional(),
+    nidBackUrl: z.string().optional(),
+  }).optional(),
 });
 
 export const loginSchema = z.object({

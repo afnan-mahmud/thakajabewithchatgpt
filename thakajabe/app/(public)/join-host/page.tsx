@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,10 +11,13 @@ import { UploadField } from '@/components/ui/UploadField';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Home, MapPin, Phone, User, FileText } from 'lucide-react';
+import { Home, MapPin, Phone, User, FileText, Mail, Lock } from 'lucide-react';
+import { api, ApiResponse } from '@/lib/api';
 
 const hostApplicationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
   phone: z.string().min(10, 'Please enter a valid phone number'),
   whatsapp: z.string().min(10, 'Please enter a valid WhatsApp number'),
   location: z.string().min(5, 'Please enter a valid location'),
@@ -22,9 +27,12 @@ const hostApplicationSchema = z.object({
 type HostApplicationForm = z.infer<typeof hostApplicationSchema>;
 
 export default function JoinHostPage() {
+  const router = useRouter();
+  const { data: session } = useSession();
   const [nidFront, setNidFront] = useState<File | null>(null);
   const [nidBack, setNidBack] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [applicationSubmitted, setApplicationSubmitted] = useState(false);
 
   const {
     register,
@@ -43,21 +51,81 @@ export default function JoinHostPage() {
     try {
       setSubmitting(true);
       
-      // In a real app, you would submit this to your API
-      console.log('Host application data:', {
-        ...data,
-        nidFront,
-        nidBack,
+      // Step 1: Upload NID images using public route
+      console.log('Uploading NID images...');
+      const [nidFrontResponse, nidBackResponse] = await Promise.all([
+        api.uploads.image(nidFront, true), // Use public route
+        api.uploads.image(nidBack, true), // Use public route
+      ]);
+      
+      console.log('NID Front Response:', nidFrontResponse);
+      console.log('NID Back Response:', nidBackResponse);
+
+      if (!nidFrontResponse.success) {
+        throw new Error(nidFrontResponse.error ?? 'Failed to upload NID front image');
+      }
+
+      if (!nidBackResponse.success) {
+        // Clean up the first upload if the second fails
+        try {
+          await api.uploads.delete((nidFrontResponse.data as any).filename);
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup first upload:', cleanupError);
+        }
+        throw new Error(nidBackResponse.error ?? 'Failed to upload NID back image');
+      }
+
+      // Step 2: Register user and create host profile in one step
+      console.log('Registering user and creating host profile...');
+      const registerResponse: ApiResponse = await api.auth.register({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        phone: data.phone,
+        isHost: true,
+        hostData: {
+          displayName: data.name,
+          phone: data.phone,
+          whatsapp: data.whatsapp,
+          locationName: data.location,
+          locationMapUrl: data.mapLink,
+          nidFrontUrl: (nidFrontResponse.data as any).url,
+          nidBackUrl: (nidBackResponse.data as any).url,
+        }
+      });
+      
+      console.log('Registration Response:', registerResponse);
+
+      if (!registerResponse.success) {
+        if (registerResponse.message?.includes('already exists')) {
+          // User already exists, proceed to login
+          console.log('User already exists, proceeding to login');
+        } else {
+          const errorMessage = registerResponse.error ?? registerResponse.message ?? 'Registration failed';
+          alert(errorMessage);
+          return;
+        }
+      }
+
+      // Step 3: Sign in
+      const signInResult = await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        redirect: false,
       });
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      alert('Application submitted successfully! We will review your application and get back to you within 24-48 hours.');
-      
+      if (signInResult?.error) {
+        alert('Login failed: ' + signInResult.error);
+        return;
+      }
+
+      // Success
+      setApplicationSubmitted(true);
+      alert('Host application submitted successfully! An admin will review your application and get back to you within 24-48 hours.');
+
     } catch (error) {
       console.error('Failed to submit application:', error);
-      alert('Failed to submit application. Please try again.');
+      alert('Failed to submit application: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setSubmitting(false);
     }
@@ -143,6 +211,32 @@ export default function JoinHostPage() {
                   />
                   {errors.name && (
                     <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email Address *</label>
+                  <Input
+                    {...register('email')}
+                    type="email"
+                    placeholder="Enter your email address"
+                    className={errors.email ? 'border-red-500' : ''}
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Password *</label>
+                  <Input
+                    {...register('password')}
+                    type="password"
+                    placeholder="Enter your password (min 6 characters)"
+                    className={errors.password ? 'border-red-500' : ''}
+                  />
+                  {errors.password && (
+                    <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
                   )}
                 </div>
 
@@ -236,9 +330,14 @@ export default function JoinHostPage() {
                 type="submit"
                 className="w-full"
                 size="lg"
-                disabled={submitting}
+                disabled={submitting || applicationSubmitted}
               >
-                {submitting ? 'Submitting Application...' : 'Submit Application'}
+                {submitting 
+                  ? 'Submitting Application...' 
+                  : applicationSubmitted 
+                    ? 'Application Submitted' 
+                    : 'Submit Application'
+                }
               </Button>
             </form>
           </CardContent>
