@@ -16,27 +16,11 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { format, isSameDay, addDays, startOfMonth, endOfMonth } from 'date-fns';
-
-interface UnavailableDate {
-  id: string;
-  roomId: string;
-  roomTitle: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  createdAt: string;
-}
-
-interface Room {
-  id: string;
-  title: string;
-  status: 'approved' | 'pending' | 'rejected';
-}
+import { useHostCalendar, HostUnavailableDate, HostCalendarRoom } from '@/lib/hooks/useHostData';
 
 export default function HostCalendar() {
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const { unavailableDates, rooms, loading, error, addUnavailableDates, removeUnavailableDates } = useHostCalendar();
   const [selectedRoom, setSelectedRoom] = useState<string>('all');
-  const [unavailableDates, setUnavailableDates] = useState<UnavailableDate[]>([]);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newUnavailable, setNewUnavailable] = useState({
@@ -45,110 +29,34 @@ export default function HostCalendar() {
     endDate: '',
     reason: '',
   });
-  const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with actual API calls
-  const mockRooms: Room[] = [
-    {
-      id: '1',
-      title: 'Luxury Apartment in Gulshan',
-      status: 'approved',
-    },
-    {
-      id: '2',
-      title: 'Cozy Studio in Dhanmondi',
-      status: 'approved',
-    },
-    {
-      id: '3',
-      title: 'Family House in Uttara',
-      status: 'pending',
-    },
-  ];
-
-  const mockUnavailableDates: UnavailableDate[] = [
-    {
-      id: '1',
-      roomId: '1',
-      roomTitle: 'Luxury Apartment in Gulshan',
-      startDate: '2024-01-25',
-      endDate: '2024-01-27',
-      reason: 'Maintenance',
-      createdAt: '2024-01-20',
-    },
-    {
-      id: '2',
-      roomId: '1',
-      roomTitle: 'Luxury Apartment in Gulshan',
-      startDate: '2024-02-10',
-      endDate: '2024-02-12',
-      reason: 'Personal use',
-      createdAt: '2024-01-22',
-    },
-    {
-      id: '3',
-      roomId: '2',
-      roomTitle: 'Cozy Studio in Dhanmondi',
-      startDate: '2024-01-30',
-      endDate: '2024-01-30',
-      reason: 'Cleaning day',
-      createdAt: '2024-01-25',
-    },
-  ];
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   useEffect(() => {
     if (selectedRoom !== 'all') {
       const roomUnavailable = unavailableDates.filter(date => date.roomId === selectedRoom);
-      const dates = roomUnavailable.flatMap(date => {
-        const start = new Date(date.startDate);
-        const end = new Date(date.endDate);
-        const dates = [];
-        for (let d = start; d <= end; d = addDays(d, 1)) {
-          dates.push(d);
-        }
-        return dates;
-      });
+      const dates = roomUnavailable.map(date => new Date(date.date));
       setSelectedDates(dates);
     } else {
       setSelectedDates([]);
     }
   }, [selectedRoom, unavailableDates]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      // Mock API calls
-      setRooms(mockRooms);
-      setUnavailableDates(mockUnavailableDates);
-    } catch (error) {
-      console.error('Failed to fetch calendar data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAddUnavailable = async () => {
-    if (!newUnavailable.roomId || !newUnavailable.startDate || !newUnavailable.endDate || !newUnavailable.reason) {
+    if (!newUnavailable.roomId || !newUnavailable.startDate || !newUnavailable.endDate) {
       return;
     }
 
     try {
-      const room = rooms.find(r => r.id === newUnavailable.roomId);
-      const unavailable: UnavailableDate = {
-        id: Date.now().toString(),
-        roomId: newUnavailable.roomId,
-        roomTitle: room?.title || '',
-        startDate: newUnavailable.startDate,
-        endDate: newUnavailable.endDate,
-        reason: newUnavailable.reason,
-        createdAt: new Date().toISOString(),
-      };
+      // Generate array of dates between start and end
+      const startDate = new Date(newUnavailable.startDate);
+      const endDate = new Date(newUnavailable.endDate);
+      const dates = [];
+      
+      for (let d = new Date(startDate); d <= endDate; d = addDays(d, 1)) {
+        dates.push(format(d, 'yyyy-MM-dd'));
+      }
 
-      setUnavailableDates(prev => [...prev, unavailable]);
+      await addUnavailableDates(newUnavailable.roomId, dates);
+      
       setNewUnavailable({
         roomId: '',
         startDate: '',
@@ -156,25 +64,20 @@ export default function HostCalendar() {
         reason: '',
       });
       setShowAddDialog(false);
-
-      // Mock API call
-      console.log('Adding unavailable dates:', unavailable);
     } catch (error) {
       console.error('Failed to add unavailable dates:', error);
     }
   };
 
-  const handleDeleteUnavailable = async (id: string) => {
-    if (!confirm('Are you sure you want to remove these unavailable dates?')) {
+  const handleDeleteUnavailable = async (unavailableDate: HostUnavailableDate) => {
+    if (!confirm('Are you sure you want to remove this unavailable date?')) {
       return;
     }
 
     try {
-      setUnavailableDates(prev => prev.filter(date => date.id !== id));
-      // Mock API call
-      console.log('Deleting unavailable dates:', id);
+      await removeUnavailableDates(unavailableDate.roomId, [unavailableDate.date]);
     } catch (error) {
-      console.error('Failed to delete unavailable dates:', error);
+      console.error('Failed to delete unavailable date:', error);
     }
   };
 
@@ -183,9 +86,8 @@ export default function HostCalendar() {
     
     return unavailableDates.some(unavailable => {
       if (unavailable.roomId !== selectedRoom) return false;
-      const start = new Date(unavailable.startDate);
-      const end = new Date(unavailable.endDate);
-      return date >= start && date <= end;
+      const unavailableDate = new Date(unavailable.date);
+      return isSameDay(date, unavailableDate);
     });
   };
 
@@ -193,7 +95,42 @@ export default function HostCalendar() {
     return unavailableDates.filter(date => date.roomId === roomId);
   };
 
-  const approvedRooms = rooms.filter(room => room.status === 'approved');
+  const approvedRooms = rooms || [];
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
+            <p className="text-gray-600">Manage unavailable dates for your properties</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-gray-600">Loading calendar data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
+            <p className="text-gray-600">Manage unavailable dates for your properties</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">Error loading calendar data: {error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -222,7 +159,7 @@ export default function HostCalendar() {
                   </SelectTrigger>
                   <SelectContent>
                     {approvedRooms.map((room) => (
-                      <SelectItem key={room.id} value={room.id}>
+                      <SelectItem key={room._id} value={room._id}>
                         {room.title}
                       </SelectItem>
                     ))}
@@ -288,7 +225,7 @@ export default function HostCalendar() {
             <SelectContent>
               <SelectItem value="all">All Properties</SelectItem>
               {approvedRooms.map((room) => (
-                <SelectItem key={room.id} value={room.id}>
+                <SelectItem key={room._id} value={room._id}>
                   {room.title}
                 </SelectItem>
               ))}
@@ -339,7 +276,7 @@ export default function HostCalendar() {
           <CardContent>
             <div className="space-y-3">
               {(selectedRoom === 'all' ? unavailableDates : getUnavailableDatesForRoom(selectedRoom)).map((unavailable) => (
-                <div key={unavailable.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div key={unavailable._id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
                       <Home className="h-4 w-4 text-gray-500" />
@@ -348,16 +285,16 @@ export default function HostCalendar() {
                       </span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      {format(new Date(unavailable.startDate), 'MMM dd, yyyy')} - {format(new Date(unavailable.endDate), 'MMM dd, yyyy')}
+                      {format(new Date(unavailable.date), 'MMM dd, yyyy')}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      Reason: {unavailable.reason}
+                      Added: {format(new Date(unavailable.createdAt), 'MMM dd, yyyy')}
                     </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDeleteUnavailable(unavailable.id)}
+                    onClick={() => handleDeleteUnavailable(unavailable)}
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -385,12 +322,7 @@ export default function HostCalendar() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {unavailableDates.reduce((total, date) => {
-                const start = new Date(date.startDate);
-                const end = new Date(date.endDate);
-                const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                return total + days;
-              }, 0)}
+              {unavailableDates.length}
             </div>
             <p className="text-xs text-gray-500 mt-1">Across all properties</p>
           </CardContent>

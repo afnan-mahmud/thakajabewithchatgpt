@@ -392,6 +392,95 @@ router.get('/:id/unavailable', async (req: Request, res: Response) => {
   }
 });
 
+// @route   GET /api/hosts/rooms/unavailable
+// @desc    Get all unavailable dates for host's rooms
+// @access  Private (host)
+router.get('/hosts/rooms/unavailable', requireHost, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
+    if (!hostProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Host profile not found'
+      });
+    }
+
+    const rooms = await Room.find({ hostId: hostProfile._id, status: 'approved' })
+      .select('_id title unavailableDates');
+
+    const unavailableDates = rooms.flatMap(room => 
+      room.unavailableDates.map(date => ({
+        _id: `${room._id}-${date}`,
+        roomId: room._id.toString(),
+        roomTitle: room.title,
+        date: date,
+        createdAt: new Date().toISOString()
+      }))
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        unavailableDates,
+        rooms: rooms.map(room => ({
+          _id: room._id,
+          title: room.title,
+          unavailableDates: room.unavailableDates
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get host unavailable dates error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// @route   DELETE /api/rooms/:id/unavailable
+// @desc    Remove unavailable dates for a room (host only)
+// @access  Private (host)
+router.delete('/:id/unavailable', requireHost, validateBody(unavailableDatesSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const room = await Room.findById(req.params.id);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    // Check if user owns this room
+    const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
+    if (!hostProfile || room.hostId.toString() !== (hostProfile._id as any).toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Remove specified unavailable dates
+    const datesToRemove = req.body.dates;
+    room.unavailableDates = room.unavailableDates.filter(date => !datesToRemove.includes(date));
+    await room.save();
+
+    return res.json({
+      success: true,
+      message: 'Unavailable dates removed successfully',
+      data: {
+        unavailableDates: room.unavailableDates
+      }
+    });
+  } catch (error) {
+    console.error('Remove unavailable dates error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 // Admin routes
 // @route   GET /api/admin/rooms
 // @desc    Get all rooms (admin only)

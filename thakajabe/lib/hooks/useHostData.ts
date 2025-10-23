@@ -94,6 +94,20 @@ export interface HostMessage {
   reason?: string;
 }
 
+export interface HostUnavailableDate {
+  _id: string;
+  roomId: string;
+  roomTitle: string;
+  date: string;
+  createdAt: string;
+}
+
+export interface HostCalendarRoom {
+  _id: string;
+  title: string;
+  unavailableDates: string[];
+}
+
 export function useHostStats() {
   const [stats, setStats] = useState<HostStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -271,4 +285,86 @@ export function useHostMessages(threadId: string | null) {
   };
 
   return { messages, loading, error, sendMessage };
+}
+
+export function useHostCalendar() {
+  const [unavailableDates, setUnavailableDates] = useState<HostUnavailableDate[]>([]);
+  const [rooms, setRooms] = useState<HostCalendarRoom[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await api.hosts.getUnavailableDates();
+        
+        if (response.success && response.data) {
+          setUnavailableDates(response.data.unavailableDates);
+          setRooms(response.data.rooms);
+        } else {
+          setError(response.message || 'Failed to fetch calendar data');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCalendarData();
+  }, []);
+
+  const addUnavailableDates = async (roomId: string, dates: string[]) => {
+    try {
+      const response = await api.rooms.setUnavailable(roomId, { dates });
+      
+      if (response.success) {
+        // Refresh calendar data
+        const refreshResponse = await api.hosts.getUnavailableDates();
+        if (refreshResponse.success && refreshResponse.data) {
+          setUnavailableDates(refreshResponse.data.unavailableDates);
+          setRooms(refreshResponse.data.rooms);
+        }
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Failed to add unavailable dates');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add unavailable dates');
+      throw err;
+    }
+  };
+
+  const removeUnavailableDates = async (roomId: string, dates: string[]) => {
+    try {
+      const response = await api.rooms.removeUnavailable(roomId, { dates });
+      
+      if (response.success) {
+        // Refresh calendar data
+        const refreshResponse = await api.hosts.getUnavailableDates();
+        if (refreshResponse.success && refreshResponse.data) {
+          setUnavailableDates(refreshResponse.data.unavailableDates);
+          setRooms(refreshResponse.data.rooms);
+        }
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Failed to remove unavailable dates');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove unavailable dates');
+      throw err;
+    }
+  };
+
+  return { 
+    unavailableDates, 
+    rooms, 
+    loading, 
+    error, 
+    addUnavailableDates, 
+    removeUnavailableDates 
+  };
 }

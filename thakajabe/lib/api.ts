@@ -209,6 +209,9 @@ export const api = {
     create: (data: any) => apiClient.post('/rooms', data),
     update: (id: string, data: any) => apiClient.put(`/rooms/${id}`, data),
     delete: (id: string) => apiClient.delete(`/rooms/${id}`),
+    getUnavailable: <T = any>(id: string) => apiClient.get<T>(`/rooms/${id}/unavailable`),
+    setUnavailable: (id: string, data: { dates: string[] }) => apiClient.post(`/rooms/${id}/unavailable`, data),
+    removeUnavailable: (id: string, data: { dates: string[] }) => apiClient.delete(`/rooms/${id}/unavailable`, data),
   },
 
   // Bookings
@@ -269,6 +272,7 @@ export const api = {
     createRoom: (data: any) => apiClient.post('/hosts/rooms', data),
     updateRoom: (id: string, data: any) => apiClient.put(`/hosts/rooms/${id}`, data),
     deleteRoom: (id: string) => apiClient.delete(`/hosts/rooms/${id}`),
+    getUnavailableDates: <T = any>() => apiClient.get<T>('/rooms/hosts/rooms/unavailable'),
     apply: (data: {
       displayName: string;
       phone: string;
