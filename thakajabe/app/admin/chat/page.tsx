@@ -16,19 +16,29 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { api } from '@/lib/api';
 
 interface ChatThread {
-  id: string;
-  roomId: string;
-  roomTitle: string;
-  userId: string;
-  userName: string;
-  hostId: string;
-  hostName: string;
+  _id: string;
+  roomId: {
+    _id: string;
+    title: string;
+    images: string[];
+  };
+  userId: {
+    _id: string;
+    name: string;
+    email: string;
+    phone?: string;
+  };
+  hostId: {
+    _id: string;
+    displayName: string;
+  };
   lastMessageAt: string;
   messageCount: number;
   isActive: boolean;
-  lastMessage: {
+  lastMessage?: {
     text: string;
     senderRole: 'user' | 'host' | 'admin';
     timestamp: string;
@@ -38,10 +48,10 @@ interface ChatThread {
 }
 
 interface Message {
-  id: string;
+  _id: string;
   text: string;
   senderRole: 'user' | 'host' | 'admin';
-  timestamp: string;
+  createdAt: string;
   blocked?: boolean;
   reason?: string;
 }
@@ -54,108 +64,7 @@ export default function AdminChat() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
-
-  // Mock data - replace with actual API calls
-  const mockThreads: ChatThread[] = [
-    {
-      id: '1',
-      roomId: 'room1',
-      roomTitle: 'Luxury Apartment in Gulshan',
-      userId: 'user1',
-      userName: 'John Doe',
-      hostId: 'host1',
-      hostName: 'Jane Smith',
-      lastMessageAt: '2024-01-20T10:30:00Z',
-      messageCount: 15,
-      isActive: true,
-      lastMessage: {
-        text: 'Thank you for the quick response!',
-        senderRole: 'user',
-        timestamp: '2024-01-20T10:30:00Z',
-      },
-    },
-    {
-      id: '2',
-      roomId: 'room2',
-      roomTitle: 'Cozy Studio in Dhanmondi',
-      userId: 'user2',
-      userName: 'Mike Johnson',
-      hostId: 'host2',
-      hostName: 'Sarah Wilson',
-      lastMessageAt: '2024-01-19T14:20:00Z',
-      messageCount: 8,
-      isActive: true,
-      lastMessage: {
-        text: 'Is the WiFi working properly?',
-        senderRole: 'user',
-        timestamp: '2024-01-19T14:20:00Z',
-      },
-    },
-    {
-      id: '3',
-      roomId: 'room3',
-      roomTitle: 'Family House in Uttara',
-      userId: 'user3',
-      userName: 'Alice Brown',
-      hostId: 'host3',
-      hostName: 'David Lee',
-      lastMessageAt: '2024-01-18T16:45:00Z',
-      messageCount: 23,
-      isActive: false,
-      lastMessage: {
-        text: 'Please contact me at +8801234567890',
-        senderRole: 'user',
-        timestamp: '2024-01-18T16:45:00Z',
-        blocked: true,
-        reason: 'Contact information detected',
-      },
-    },
-  ];
-
-  const mockMessages: Message[] = [
-    {
-      id: '1',
-      text: 'Hello! I\'m interested in booking your room.',
-      senderRole: 'user',
-      timestamp: '2024-01-20T09:00:00Z',
-    },
-    {
-      id: '2',
-      text: 'Hi! I\'d be happy to help you with that. What dates are you looking for?',
-      senderRole: 'host',
-      timestamp: '2024-01-20T09:05:00Z',
-    },
-    {
-      id: '3',
-      text: 'I need it for January 25-27. Is it available?',
-      senderRole: 'user',
-      timestamp: '2024-01-20T09:10:00Z',
-    },
-    {
-      id: '4',
-      text: 'Yes, those dates are available! The total would be ৳16,000 for 2 nights.',
-      senderRole: 'host',
-      timestamp: '2024-01-20T09:15:00Z',
-    },
-    {
-      id: '5',
-      text: 'Perfect! How do I proceed with the booking?',
-      senderRole: 'user',
-      timestamp: '2024-01-20T09:20:00Z',
-    },
-    {
-      id: '6',
-      text: 'You can book directly through the platform. I\'ll send you the booking link.',
-      senderRole: 'host',
-      timestamp: '2024-01-20T09:25:00Z',
-    },
-    {
-      id: '7',
-      text: 'Thank you for the quick response!',
-      senderRole: 'user',
-      timestamp: '2024-01-20T10:30:00Z',
-    },
-  ];
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchThreads();
@@ -167,17 +76,24 @@ export default function AdminChat() {
 
   useEffect(() => {
     if (selectedThread) {
-      fetchMessages(selectedThread.id);
+      fetchMessages(selectedThread._id);
     }
   }, [selectedThread]);
 
   const fetchThreads = async () => {
     try {
       setLoading(true);
-      // Mock API call
-      setThreads(mockThreads);
+      setError(null);
+      const response = await api.chat.getThreads({ page: 1, limit: 50 });
+      
+      if (response.success && response.data && Array.isArray((response.data as any).threads)) {
+        setThreads((response.data as any).threads || []);
+      } else {
+        setError(response.message || 'Failed to fetch threads');
+      }
     } catch (error) {
       console.error('Failed to fetch threads:', error);
+      setError('Failed to fetch threads');
     } finally {
       setLoading(false);
     }
@@ -185,10 +101,17 @@ export default function AdminChat() {
 
   const fetchMessages = async (threadId: string) => {
     try {
-      // Mock API call
-      setMessages(mockMessages);
+      setError(null);
+      const response = await api.chat.getMessages(threadId, { page: 1, limit: 100 });
+      
+      if (response.success && response.data && Array.isArray((response.data as any).messages)) {
+        setMessages((response.data as any).messages || []);
+      } else {
+        setError(response.message || 'Failed to fetch messages');
+      }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
+      setError('Failed to fetch messages');
     }
   };
 
@@ -197,10 +120,10 @@ export default function AdminChat() {
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(thread =>
-        thread.roomTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        thread.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        thread.hostName.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(thread => 
+        thread.roomId.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        thread.userId.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        thread.hostId.displayName.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -211,20 +134,22 @@ export default function AdminChat() {
     if (!newMessage.trim() || !selectedThread) return;
 
     try {
-      const message: Message = {
-        id: Date.now().toString(),
+      const response = await api.chat.sendMessage({
+        threadId: selectedThread._id,
         text: newMessage,
-        senderRole: 'admin',
-        timestamp: new Date().toISOString(),
-      };
+        senderRole: 'admin'
+      });
 
-      setMessages(prev => [...prev, message]);
-      setNewMessage('');
-
-      // Mock API call to send message
-      console.log('Sending admin message:', message);
+      if (response.success) {
+        // Refresh messages after sending
+        await fetchMessages(selectedThread._id);
+        setNewMessage('');
+      } else {
+        setError(response.message || 'Failed to send message');
+      }
     } catch (error) {
       console.error('Failed to send message:', error);
+      setError('Failed to send message');
     }
   };
 
@@ -269,25 +194,37 @@ export default function AdminChat() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="space-y-1">
-                {filteredThreads.map((thread) => (
+              {loading ? (
+                <div className="p-8 text-center">
+                  <p className="text-gray-600">Loading conversations...</p>
+                </div>
+              ) : error ? (
+                <div className="p-8 text-center">
+                  <p className="text-red-600 mb-4">Error: {error}</p>
+                  <Button onClick={fetchThreads} variant="outline">
+                    Try Again
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {filteredThreads.map((thread) => (
                   <div
-                    key={thread.id}
+                    key={thread._id}
                     className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
-                      selectedThread?.id === thread.id ? 'bg-blue-50 border-blue-200' : ''
+                      selectedThread?._id === thread._id ? 'bg-blue-50 border-blue-200' : ''
                     }`}
                     onClick={() => setSelectedThread(thread)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-gray-900 truncate">
-                          {thread.roomTitle}
+                          {thread.roomId.title}
                         </h3>
                         <p className="text-sm text-gray-600">
-                          {thread.userName} ↔ {thread.hostName}
+                          {thread.userId.name} ↔ {thread.hostId.displayName}
                         </p>
                         <p className="text-xs text-gray-500 mt-1 truncate">
-                          {thread.lastMessage.text}
+                          {thread.lastMessage?.text || 'No messages yet'}
                         </p>
                       </div>
                       <div className="ml-2 flex flex-col items-end">
@@ -302,7 +239,7 @@ export default function AdminChat() {
                         </span>
                       </div>
                     </div>
-                    {thread.lastMessage.blocked && (
+                    {thread.lastMessage?.blocked && (
                       <div className="flex items-center mt-2 text-xs text-red-600">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         Blocked: {thread.lastMessage.reason}
@@ -310,7 +247,8 @@ export default function AdminChat() {
                     )}
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -322,9 +260,9 @@ export default function AdminChat() {
               <CardHeader className="border-b">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">{selectedThread.roomTitle}</CardTitle>
+                    <CardTitle className="text-lg">{selectedThread.roomId.title}</CardTitle>
                     <p className="text-sm text-gray-600">
-                      {selectedThread.userName} ↔ {selectedThread.hostName}
+                      {selectedThread.userId.name} ↔ {selectedThread.hostId.displayName}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -340,10 +278,18 @@ export default function AdminChat() {
               </CardHeader>
               
               <CardContent className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  {messages.map((message) => (
+                {error ? (
+                  <div className="text-center py-8">
+                    <p className="text-red-600 mb-4">Error loading messages: {error}</p>
+                    <Button onClick={() => selectedThread && fetchMessages(selectedThread._id)} variant="outline">
+                      Try Again
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((message) => (
                     <div
-                      key={message.id}
+                      key={message._id}
                       className={`flex ${
                         message.senderRole === 'admin' ? 'justify-end' : 'justify-start'
                       }`}
@@ -367,12 +313,13 @@ export default function AdminChat() {
                         </div>
                         <p className="text-sm">{message.text}</p>
                         <p className="text-xs opacity-70 mt-1">
-                          {format(new Date(message.timestamp), 'HH:mm')}
+                          {format(new Date(message.createdAt), 'HH:mm')}
                         </p>
                       </div>
                     </div>
                   ))}
-                </div>
+                  </div>
+                )}
               </CardContent>
               
               <div className="border-t p-4">
