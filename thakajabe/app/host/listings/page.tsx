@@ -22,109 +22,25 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useHostRooms, HostRoom } from '@/lib/hooks/useHostData';
+import { api } from '@/lib/api';
 
-interface Listing {
-  id: string;
-  title: string;
-  description: string;
-  address: string;
-  locationName: string;
-  roomType: string;
-  basePriceTk: number;
-  commissionTk: number;
-  totalPriceTk: number;
-  images: string[];
-  status: 'draft' | 'pending' | 'approved' | 'rejected';
-  instantBooking: boolean;
-  amenities: string[];
-  createdAt: string;
-  updatedAt: string;
+interface Listing extends HostRoom {
+  // Extending the HostRoom interface from the hook
 }
 
 export default function HostListings() {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const { rooms: listings, loading, error } = useHostRooms();
   const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with actual API calls
-  const mockListings: Listing[] = [
-    {
-      id: '1',
-      title: 'Luxury Apartment in Gulshan',
-      description: 'Beautiful 2-bedroom apartment with modern amenities',
-      address: 'House 123, Road 45, Gulshan 1',
-      locationName: 'Gulshan, Dhaka',
-      roomType: 'Apartment',
-      basePriceTk: 8000,
-      commissionTk: 800,
-      totalPriceTk: 8800,
-      images: ['/images/room1.jpg'],
-      status: 'approved',
-      instantBooking: true,
-      amenities: ['WiFi', 'AC', 'Kitchen', 'Parking'],
-      createdAt: '2024-01-01',
-      updatedAt: '2024-01-15',
-    },
-    {
-      id: '2',
-      title: 'Cozy Studio in Dhanmondi',
-      description: 'Perfect for solo travelers',
-      address: 'House 456, Road 27, Dhanmondi',
-      locationName: 'Dhanmondi, Dhaka',
-      roomType: 'Studio',
-      basePriceTk: 5000,
-      commissionTk: 500,
-      totalPriceTk: 5500,
-      images: ['/images/room2.jpg'],
-      status: 'pending',
-      instantBooking: false,
-      amenities: ['WiFi', 'AC', 'TV'],
-      createdAt: '2024-01-10',
-      updatedAt: '2024-01-18',
-    },
-    {
-      id: '3',
-      title: 'Family House in Uttara',
-      description: 'Spacious 3-bedroom house for families',
-      address: 'House 789, Sector 7, Uttara',
-      locationName: 'Uttara, Dhaka',
-      roomType: 'House',
-      basePriceTk: 12000,
-      commissionTk: 1200,
-      totalPriceTk: 13200,
-      images: ['/images/room3.jpg'],
-      status: 'draft',
-      instantBooking: false,
-      amenities: ['WiFi', 'AC', 'Kitchen', 'Garden', 'Parking'],
-      createdAt: '2024-01-15',
-      updatedAt: '2024-01-20',
-    },
-  ];
-
-  useEffect(() => {
-    fetchListings();
-  }, []);
 
   useEffect(() => {
     filterListings();
   }, [listings, searchTerm]);
 
-  const fetchListings = async () => {
-    try {
-      setLoading(true);
-      // Mock API call
-      setListings(mockListings);
-    } catch (error) {
-      console.error('Failed to fetch listings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const filterListings = () => {
-    let filtered = listings;
+    let filtered = listings || [];
 
     // Filter by search term
     if (searchTerm) {
@@ -140,12 +56,13 @@ export default function HostListings() {
 
   const handleToggleInstantBooking = async (listingId: string, enabled: boolean) => {
     try {
-      // Mock API call
-      setListings(listings.map(listing => 
-        listing.id === listingId 
-          ? { ...listing, instantBooking: enabled }
-          : listing
-      ));
+      const response = await api.hosts.updateRoom(listingId, { instantBooking: enabled });
+      if (response.success) {
+        // Refresh the listings data
+        window.location.reload();
+      } else {
+        console.error('Failed to toggle instant booking:', response.message);
+      }
     } catch (error) {
       console.error('Failed to toggle instant booking:', error);
     }
@@ -157,8 +74,13 @@ export default function HostListings() {
     }
 
     try {
-      // Mock API call
-      setListings(listings.filter(listing => listing.id !== listingId));
+      const response = await api.hosts.deleteRoom(listingId);
+      if (response.success) {
+        // Refresh the listings data
+        window.location.reload();
+      } else {
+        console.error('Failed to delete listing:', response.message);
+      }
     } catch (error) {
       console.error('Failed to delete listing:', error);
     }
@@ -177,6 +99,41 @@ export default function HostListings() {
       </Badge>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
+            <p className="text-gray-600">Manage your property listings</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-gray-600">Loading listings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
+            <p className="text-gray-600">Manage your property listings</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">Error loading listings: {error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -200,7 +157,7 @@ export default function HostListings() {
             <CardTitle className="text-sm font-medium text-gray-600">Total Listings</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{listings.length}</div>
+            <div className="text-2xl font-bold">{listings?.length || 0}</div>
             <p className="text-xs text-gray-500 mt-1">All properties</p>
           </CardContent>
         </Card>
@@ -211,7 +168,7 @@ export default function HostListings() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {listings.filter(l => l.status === 'approved').length}
+              {listings?.filter(l => l.status === 'approved').length || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Approved listings</p>
           </CardContent>
@@ -223,7 +180,7 @@ export default function HostListings() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {listings.filter(l => l.status === 'pending').length}
+              {listings?.filter(l => l.status === 'pending').length || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Awaiting approval</p>
           </CardContent>
@@ -235,7 +192,7 @@ export default function HostListings() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {listings.filter(l => l.instantBooking).length}
+              {listings?.filter(l => l.instantBooking).length || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Enabled</p>
           </CardContent>
@@ -262,12 +219,12 @@ export default function HostListings() {
         <CardContent>
           <div className="space-y-4">
             {filteredListings.map((listing) => (
-              <div key={listing.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div key={listing._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start space-x-4">
                   <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0">
-                    {listing.images[0] ? (
+                    {listing.images && listing.images[0] ? (
                       <Image
-                        src={listing.images[0]}
+                        src={listing.images[0].url}
                         alt={listing.title}
                         width={96}
                         height={96}
@@ -334,20 +291,20 @@ export default function HostListings() {
                           <span className="text-sm font-medium">Instant Booking:</span>
                           <Switch
                             checked={listing.instantBooking}
-                            onCheckedChange={(enabled) => handleToggleInstantBooking(listing.id, enabled)}
+                            onCheckedChange={(enabled) => handleToggleInstantBooking(listing._id, enabled)}
                             disabled={listing.status !== 'approved'}
                           />
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          <Link href={`/host/listings/${listing.id}`}>
+                          <Link href={`/host/listings/${listing._id}`}>
                             <Button variant="outline" size="sm">
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
                           </Link>
                           
-                          <Link href={`/host/listings/${listing.id}/edit`}>
+                          <Link href={`/host/listings/${listing._id}/edit`}>
                             <Button variant="outline" size="sm">
                               <Edit className="h-4 w-4 mr-1" />
                               Edit
@@ -357,7 +314,7 @@ export default function HostListings() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDelete(listing.id)}
+                            onClick={() => handleDelete(listing._id)}
                             className="text-red-600 hover:text-red-700"
                           >
                             <Trash2 className="h-4 w-4 mr-1" />

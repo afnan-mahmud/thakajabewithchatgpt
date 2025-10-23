@@ -279,4 +279,16 @@ export const api = {
       nidBackUrl: string;
     }) => apiClient.post('/hosts/apply', data),
   },
+
+  // Messages
+  messages: {
+    getThreads: <T = any>(params?: { page?: number; limit?: number }) =>
+      apiClient.get<T>('/messages/threads', params),
+    getThreadMessages: <T = any>(threadId: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get<T>(`/messages/threads/${threadId}`, params),
+    sendMessage: (threadId: string, data: { text: string }) =>
+      apiClient.post(`/messages/threads/${threadId}`, data),
+    createThread: (data: { roomId: string; userId: string }) =>
+      apiClient.post('/messages/threads', data),
+  },
 };
