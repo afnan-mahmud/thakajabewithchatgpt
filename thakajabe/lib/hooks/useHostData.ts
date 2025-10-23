@@ -71,7 +71,7 @@ export function useHostStats() {
         setLoading(true);
         setError(null);
         
-        const response = await api.get('/hosts/stats');
+        const response = await api.hosts.stats();
         
         if (response.success && response.data) {
           setStats(response.data);
@@ -102,7 +102,7 @@ export function useHostRooms() {
         setLoading(true);
         setError(null);
         
-        const response = await api.get('/hosts/rooms');
+        const response = await api.hosts.rooms();
         
         if (response.success && response.data) {
           setRooms(response.data);
@@ -133,7 +133,7 @@ export function useHostBookings() {
         setLoading(true);
         setError(null);
         
-        const response = await api.get('/hosts/bookings');
+        const response = await api.hosts.bookings();
         
         if (response.success && response.data) {
           setBookings(response.data);

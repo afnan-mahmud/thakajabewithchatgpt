@@ -216,6 +216,7 @@ export const api = {
     create: (data: any) => apiClient.post('/bookings/create', data),
     list: <T = any>(params?: any) => apiClient.get<T>('/bookings/mine', params),
     get: <T = any>(id: string) => apiClient.get<T>(`/bookings/${id}`),
+    update: (id: string, data: any) => apiClient.put(`/bookings/${id}`, data),
     cancel: (id: string) => apiClient.post(`/bookings/${id}/cancel`),
   },
 

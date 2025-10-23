@@ -378,6 +378,56 @@ router.post('/:id/reject', requireUser, validateBody(bookingApprovalSchema), asy
   }
 });
 
+// @route   PUT /api/bookings/:id
+// @desc    Update booking status
+// @access  Private (host or admin)
+router.put('/:id', requireUser, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Check permissions
+    if (req.user!.role === 'host') {
+      const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
+      if (!hostProfile || booking.hostId.toString() !== hostProfile._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied'
+        });
+      }
+    }
+
+    // Update booking status
+    if (status) {
+      booking.status = status;
+    }
+    
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Booking updated successfully',
+      data: {
+        id: booking._id,
+        status: booking.status,
+        updatedAt: booking.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Update booking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 // @route   POST /api/bookings/:id/cancel
 // @desc    Cancel booking with refund logic
 // @access  Private (user)

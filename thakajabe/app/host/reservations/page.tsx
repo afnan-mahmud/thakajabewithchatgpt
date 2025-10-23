@@ -21,124 +21,26 @@ import {
   Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useHostBookings, HostBooking } from '@/lib/hooks/useHostData';
+import { api } from '@/lib/api';
 
-interface Booking {
-  id: string;
-  roomId: string;
-  roomTitle: string;
-  userId: string;
-  guestName: string;
-  guestEmail: string;
-  guestPhone: string;
-  checkIn: string;
-  checkOut: string;
-  guests: number;
-  totalAmount: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  paymentStatus: 'unpaid' | 'paid' | 'failed' | 'refunded';
-  createdAt: string;
-  specialRequests?: string;
+interface Booking extends HostBooking {
+  // Extending the HostBooking interface from the hook
 }
 
 export default function HostReservations() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const { bookings, loading, error } = useHostBookings();
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with actual API calls
-  const mockBookings: Booking[] = [
-    {
-      id: '1',
-      roomId: 'room1',
-      roomTitle: 'Luxury Apartment in Gulshan',
-      userId: 'user1',
-      guestName: 'John Doe',
-      guestEmail: 'john@example.com',
-      guestPhone: '+8801234567890',
-      checkIn: '2024-01-25',
-      checkOut: '2024-01-27',
-      guests: 2,
-      totalAmount: 16000,
-      status: 'confirmed',
-      paymentStatus: 'paid',
-      createdAt: '2024-01-20',
-      specialRequests: 'Late check-in requested',
-    },
-    {
-      id: '2',
-      roomId: 'room2',
-      roomTitle: 'Cozy Studio in Dhanmondi',
-      userId: 'user2',
-      guestName: 'Jane Smith',
-      guestEmail: 'jane@example.com',
-      guestPhone: '+8801234567891',
-      checkIn: '2024-01-28',
-      checkOut: '2024-01-30',
-      guests: 1,
-      totalAmount: 11000,
-      status: 'pending',
-      paymentStatus: 'unpaid',
-      createdAt: '2024-01-21',
-    },
-    {
-      id: '3',
-      roomId: 'room3',
-      roomTitle: 'Family House in Uttara',
-      userId: 'user3',
-      guestName: 'Mike Johnson',
-      guestEmail: 'mike@example.com',
-      guestPhone: '+8801234567892',
-      checkIn: '2024-02-01',
-      checkOut: '2024-02-03',
-      guests: 4,
-      totalAmount: 24000,
-      status: 'cancelled',
-      paymentStatus: 'refunded',
-      createdAt: '2024-01-22',
-    },
-    {
-      id: '4',
-      roomId: 'room1',
-      roomTitle: 'Luxury Apartment in Gulshan',
-      userId: 'user4',
-      guestName: 'Sarah Wilson',
-      guestEmail: 'sarah@example.com',
-      guestPhone: '+8801234567893',
-      checkIn: '2024-01-15',
-      checkOut: '2024-01-17',
-      guests: 2,
-      totalAmount: 16000,
-      status: 'completed',
-      paymentStatus: 'paid',
-      createdAt: '2024-01-10',
-    },
-  ];
-
-  useEffect(() => {
-    fetchBookings();
-  }, []);
 
   useEffect(() => {
     filterBookings();
   }, [bookings, searchTerm, statusFilter]);
 
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      // Mock API call
-      setBookings(mockBookings);
-    } catch (error) {
-      console.error('Failed to fetch bookings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const filterBookings = () => {
-    let filtered = bookings;
+    let filtered = bookings || [];
 
     // Filter by status
     if (statusFilter !== 'all') {
@@ -148,10 +50,10 @@ export default function HostReservations() {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(booking =>
-        booking.roomTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.guestEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.id.toLowerCase().includes(searchTerm.toLowerCase())
+        booking.roomId.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.userId.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.userId.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking._id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -160,12 +62,13 @@ export default function HostReservations() {
 
   const handleApprove = async (bookingId: string) => {
     try {
-      // Mock API call
-      setBookings(bookings.map(booking => 
-        booking.id === bookingId 
-          ? { ...booking, status: 'confirmed' as const }
-          : booking
-      ));
+      const response = await api.bookings.update(bookingId, { status: 'confirmed' });
+      if (response.success) {
+        // Refresh the bookings data
+        window.location.reload();
+      } else {
+        console.error('Failed to approve booking:', response.message);
+      }
     } catch (error) {
       console.error('Failed to approve booking:', error);
     }
@@ -173,12 +76,13 @@ export default function HostReservations() {
 
   const handleReject = async (bookingId: string) => {
     try {
-      // Mock API call
-      setBookings(bookings.map(booking => 
-        booking.id === bookingId 
-          ? { ...booking, status: 'cancelled' as const }
-          : booking
-      ));
+      const response = await api.bookings.update(bookingId, { status: 'cancelled' });
+      if (response.success) {
+        // Refresh the bookings data
+        window.location.reload();
+      } else {
+        console.error('Failed to reject booking:', response.message);
+      }
     } catch (error) {
       console.error('Failed to reject booking:', error);
     }
@@ -212,6 +116,41 @@ export default function HostReservations() {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Reservations</h1>
+            <p className="text-gray-600">Manage your property bookings</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-gray-600">Loading reservations...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Reservations</h1>
+            <p className="text-gray-600">Manage your property bookings</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">Error loading reservations: {error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -228,7 +167,7 @@ export default function HostReservations() {
             <CardTitle className="text-sm font-medium text-gray-600">Total Bookings</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{bookings.length}</div>
+            <div className="text-2xl font-bold">{bookings?.length || 0}</div>
             <p className="text-xs text-gray-500 mt-1">All time</p>
           </CardContent>
         </Card>
@@ -239,7 +178,7 @@ export default function HostReservations() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {bookings.filter(b => b.status === 'pending').length}
+              {bookings?.filter(b => b.status === 'pending').length || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Awaiting approval</p>
           </CardContent>
@@ -251,7 +190,7 @@ export default function HostReservations() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {bookings.filter(b => b.status === 'confirmed').length}
+              {bookings?.filter(b => b.status === 'confirmed').length || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Active bookings</p>
           </CardContent>
@@ -263,7 +202,7 @@ export default function HostReservations() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              ৳{bookings.reduce((sum, b) => sum + b.totalAmount, 0).toLocaleString()}
+              ৳{bookings?.reduce((sum, b) => sum + b.amountTk, 0).toLocaleString() || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">All bookings</p>
           </CardContent>
@@ -302,12 +241,12 @@ export default function HostReservations() {
         <CardContent>
           <div className="space-y-4">
             {filteredBookings.map((booking) => (
-              <div key={booking.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div key={booking._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-4 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">
-                        Booking #{booking.id}
+                        Booking #{booking._id.slice(-8)}
                       </h3>
                       {getStatusBadge(booking.status)}
                       {getPaymentStatusBadge(booking.paymentStatus)}
@@ -315,18 +254,18 @@ export default function HostReservations() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <h4 className="font-medium text-gray-900">{booking.roomTitle}</h4>
+                        <h4 className="font-medium text-gray-900">{booking.roomId.title}</h4>
                         <p className="text-sm text-gray-600 flex items-center mt-1">
                           <User className="h-4 w-4 mr-1" />
-                          {booking.guestName}
+                          {booking.userId.name}
                         </p>
                         <p className="text-sm text-gray-600 flex items-center">
                           <Mail className="h-4 w-4 mr-1" />
-                          {booking.guestEmail}
+                          {booking.userId.email}
                         </p>
                         <p className="text-sm text-gray-600 flex items-center">
                           <Phone className="h-4 w-4 mr-1" />
-                          {booking.guestPhone}
+                          {booking.userId.phone}
                         </p>
                       </div>
                       
@@ -353,18 +292,10 @@ export default function HostReservations() {
                         </div>
                         <div className="flex items-center mt-1">
                           <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
-                          <p className="font-semibold">৳{booking.totalAmount.toLocaleString()}</p>
+                          <p className="font-semibold">৳{booking.amountTk.toLocaleString()}</p>
                         </div>
                       </div>
                     </div>
-                    
-                    {booking.specialRequests && (
-                      <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
-                        <p className="text-sm text-yellow-800">
-                          <strong>Special Requests:</strong> {booking.specialRequests}
-                        </p>
-                      </div>
-                    )}
                     
                     <div className="flex items-center space-x-4 mt-3 text-sm text-gray-500">
                       <div className="flex items-center">
@@ -384,16 +315,16 @@ export default function HostReservations() {
                       </DialogTrigger>
                       <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                          <DialogTitle>Booking Details - #{booking.id}</DialogTitle>
+                          <DialogTitle>Booking Details - #{booking._id.slice(-8)}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-6">
                           {/* Guest Information */}
                           <div>
                             <h3 className="font-semibold text-lg mb-2">Guest Information</h3>
                             <div className="bg-gray-50 p-4 rounded-lg">
-                              <p className="font-medium">{booking.guestName}</p>
-                              <p className="text-sm text-gray-600">{booking.guestEmail}</p>
-                              <p className="text-sm text-gray-600">{booking.guestPhone}</p>
+                              <p className="font-medium">{booking.userId.name}</p>
+                              <p className="text-sm text-gray-600">{booking.userId.email}</p>
+                              <p className="text-sm text-gray-600">{booking.userId.phone}</p>
                             </div>
                           </div>
                           
@@ -403,11 +334,11 @@ export default function HostReservations() {
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <p className="text-sm font-medium text-gray-600">Property</p>
-                                <p>{booking.roomTitle}</p>
+                                <p>{booking.roomId.title}</p>
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                                <p className="font-semibold">৳{booking.totalAmount.toLocaleString()}</p>
+                                <p className="font-semibold">৳{booking.amountTk.toLocaleString()}</p>
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-gray-600">Check-in</p>
@@ -427,16 +358,6 @@ export default function HostReservations() {
                               </div>
                             </div>
                           </div>
-                          
-                          {/* Special Requests */}
-                          {booking.specialRequests && (
-                            <div>
-                              <h3 className="font-semibold text-lg mb-2">Special Requests</h3>
-                              <div className="bg-yellow-50 p-4 rounded-lg">
-                                <p className="text-sm">{booking.specialRequests}</p>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -445,7 +366,7 @@ export default function HostReservations() {
                       <>
                         <Button
                           size="sm"
-                          onClick={() => handleApprove(booking.id)}
+                          onClick={() => handleApprove(booking._id)}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <Check className="h-4 w-4 mr-1" />
@@ -454,7 +375,7 @@ export default function HostReservations() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleReject(booking.id)}
+                          onClick={() => handleReject(booking._id)}
                         >
                           <X className="h-4 w-4 mr-1" />
                           Reject
@@ -477,3 +398,4 @@ export default function HostReservations() {
     </div>
   );
 }
+

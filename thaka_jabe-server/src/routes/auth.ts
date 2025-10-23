@@ -27,13 +27,13 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Create user (always start as guest, role will be updated when host is approved)
+    // Create user with appropriate role based on registration type
     const user = new User({
       name,
       email,
       passwordHash,
       phone,
-      role: 'guest'
+      role: isHost ? 'host' : 'guest'
     });
 
     await user.save();
