@@ -9,6 +9,8 @@ export interface AdminStats {
   cancelledBookings: number;
   totalRevenue: number;
   totalHosts: number;
+  activeHosts: number;
+  totalRooms: number;
   activeRooms: number;
 }
 
@@ -70,7 +72,7 @@ export function useAdminStats() {
         setLoading(true);
         setError(null);
         
-        const response = await api.get('/admin/stats');
+        const response = await api.admin.stats();
         
         if (response.success && response.data) {
           setStats(response.data);
@@ -101,7 +103,7 @@ export function useHostApplications() {
         setLoading(true);
         setError(null);
         
-        const response = await api.get('/admin/hosts');
+        const response = await api.admin.hosts();
         
         if (response.success && response.data) {
           setApplications(response.data);
@@ -132,7 +134,7 @@ export function useAdminBookings() {
         setLoading(true);
         setError(null);
         
-        const response = await api.get('/admin/bookings');
+        const response = await api.admin.bookings();
         
         if (response.success && response.data) {
           setBookings(response.data);
