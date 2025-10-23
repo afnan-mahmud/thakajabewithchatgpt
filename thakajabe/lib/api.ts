@@ -267,6 +267,11 @@ export const api = {
       addAdjustment: (data: { amountTk: number; note: string }) => apiClient.post('/accounts/adjustment', data),
     },
     users: (params?: { page?: number; limit?: number }) => apiClient.get('/admin/users', params),
+    payouts: {
+      list: (params?: { page?: number; limit?: number; status?: string }) => apiClient.get('/admin/payouts', params),
+      approve: (id: string, data?: any) => apiClient.post(`/admin/payouts/${id}/approve`, data),
+      reject: (id: string, data?: any) => apiClient.post(`/admin/payouts/${id}/reject`, data),
+    },
   },
 
   // Host endpoints

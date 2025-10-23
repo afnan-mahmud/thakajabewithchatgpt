@@ -19,24 +19,30 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { api } from '@/lib/api';
 
 interface PaymentRequest {
-  id: string;
-  hostId: string;
-  hostName: string;
-  hostEmail: string;
-  method: 'bank_transfer' | 'mobile_banking' | 'cash';
+  _id: string;
+  hostId: {
+    _id: string;
+    displayName: string;
+    locationName?: string;
+  };
+  method: {
+    type: 'bkash' | 'nagad' | 'bank';
+    subtype?: 'personal' | 'merchant' | 'agent';
+    accountNo?: string;
+    bankFields?: {
+      bankName?: string;
+      branchName?: string;
+      accountHolderName?: string;
+      routingNumber?: string;
+    };
+  };
   amountTk: number;
   status: 'pending' | 'approved' | 'rejected';
-  accountDetails: {
-    bankName?: string;
-    accountNumber?: string;
-    mobileNumber?: string;
-    provider?: string;
-  };
-  requestedAt: string;
-  processedAt?: string;
-  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function AdminPayments() {
@@ -46,57 +52,7 @@ export default function AdminPayments() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with actual API calls
-  const mockPaymentRequests: PaymentRequest[] = [
-    {
-      id: '1',
-      hostId: 'host1',
-      hostName: 'John Doe',
-      hostEmail: 'john@example.com',
-      method: 'bank_transfer',
-      amountTk: 25000,
-      status: 'pending',
-      accountDetails: {
-        bankName: 'Dutch-Bangla Bank',
-        accountNumber: '1234567890',
-      },
-      requestedAt: '2024-01-20T10:30:00Z',
-      notes: 'Monthly earnings payout',
-    },
-    {
-      id: '2',
-      hostId: 'host2',
-      hostName: 'Jane Smith',
-      hostEmail: 'jane@example.com',
-      method: 'mobile_banking',
-      amountTk: 15000,
-      status: 'approved',
-      accountDetails: {
-        mobileNumber: '+8801234567890',
-        provider: 'bKash',
-      },
-      requestedAt: '2024-01-18T14:20:00Z',
-      processedAt: '2024-01-19T09:15:00Z',
-      notes: 'Commission payout',
-    },
-    {
-      id: '3',
-      hostId: 'host3',
-      hostName: 'Mike Johnson',
-      hostEmail: 'mike@example.com',
-      method: 'mobile_banking',
-      amountTk: 30000,
-      status: 'rejected',
-      accountDetails: {
-        mobileNumber: '+8801234567891',
-        provider: 'Nagad',
-      },
-      requestedAt: '2024-01-15T16:45:00Z',
-      processedAt: '2024-01-16T11:30:00Z',
-      notes: 'Incorrect account details provided',
-    },
-  ];
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPaymentRequests();
@@ -109,10 +65,17 @@ export default function AdminPayments() {
   const fetchPaymentRequests = async () => {
     try {
       setLoading(true);
-      // Mock API call
-      setPaymentRequests(mockPaymentRequests);
+      setError(null);
+      const response = await api.admin.payouts.list({ page: 1, limit: 100 });
+      
+      if (response.success && response.data) {
+        setPaymentRequests((response.data as any).payoutRequests || []);
+      } else {
+        setError(response.message || 'Failed to fetch payment requests');
+      }
     } catch (error) {
       console.error('Failed to fetch payment requests:', error);
+      setError('Failed to fetch payment requests');
     } finally {
       setLoading(false);
     }
@@ -129,9 +92,9 @@ export default function AdminPayments() {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(request =>
-        request.hostName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.hostEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.id.toLowerCase().includes(searchTerm.toLowerCase())
+        request.hostId.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (request.hostId.locationName && request.hostId.locationName.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -140,44 +103,33 @@ export default function AdminPayments() {
 
   const handleApprove = async (requestId: string) => {
     try {
-      // Mock API call
-      setPaymentRequests(requests => 
-        requests.map(request => 
-          request.id === requestId 
-            ? { 
-                ...request, 
-                status: 'approved' as const,
-                processedAt: new Date().toISOString()
-              }
-            : request
-        )
-      );
+      const response = await api.admin.payouts.approve(requestId);
       
-      // In real implementation, this would:
-      // 1. Create a negative ledger entry
-      // 2. Update the request status
-      // 3. Process the actual payment
+      if (response.success) {
+        // Refresh the payment requests after approval
+        await fetchPaymentRequests();
+      } else {
+        setError(response.message || 'Failed to approve payment request');
+      }
     } catch (error) {
       console.error('Failed to approve payment request:', error);
+      setError('Failed to approve payment request');
     }
   };
 
   const handleReject = async (requestId: string) => {
     try {
-      // Mock API call
-      setPaymentRequests(requests => 
-        requests.map(request => 
-          request.id === requestId 
-            ? { 
-                ...request, 
-                status: 'rejected' as const,
-                processedAt: new Date().toISOString()
-              }
-            : request
-        )
-      );
+      const response = await api.admin.payouts.reject(requestId);
+      
+      if (response.success) {
+        // Refresh the payment requests after rejection
+        await fetchPaymentRequests();
+      } else {
+        setError(response.message || 'Failed to reject payment request');
+      }
     } catch (error) {
       console.error('Failed to reject payment request:', error);
+      setError('Failed to reject payment request');
     }
   };
 
@@ -194,15 +146,15 @@ export default function AdminPayments() {
     );
   };
 
-  const getMethodBadge = (method: string) => {
+  const getMethodBadge = (method: { type: string; subtype?: string }) => {
     const variants = {
-      bank_transfer: 'bg-blue-100 text-blue-800',
-      mobile_banking: 'bg-green-100 text-green-800',
-      cash: 'bg-gray-100 text-gray-800',
+      bank: 'bg-blue-100 text-blue-800',
+      bkash: 'bg-green-100 text-green-800',
+      nagad: 'bg-orange-100 text-orange-800',
     };
     return (
-      <Badge className={variants[method as keyof typeof variants]}>
-        {method.replace('_', ' ').toUpperCase()}
+      <Badge className={variants[method.type as keyof typeof variants]}>
+        {method.type.toUpperCase()}
       </Badge>
     );
   };
@@ -216,14 +168,46 @@ export default function AdminPayments() {
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-red-600">
+              <p className="font-medium">Error loading payment requests</p>
+              <p className="text-sm">{error}</p>
+            </div>
+            <div className="ml-auto">
+              <Button onClick={fetchPaymentRequests} variant="outline" size="sm">
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <div className="h-4 bg-gray-200 rounded animate-pulse" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Total Requests</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{paymentRequests.length}</div>
+            <div className="text-2xl font-bold">{paymentRequests.length || 0}</div>
             <p className="text-xs text-gray-500 mt-1">All time requests</p>
           </CardContent>
         </Card>
@@ -234,7 +218,7 @@ export default function AdminPayments() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {paymentRequests.filter(r => r.status === 'pending').length}
+              {paymentRequests.filter(r => r.status === 'pending').length || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Awaiting approval</p>
           </CardContent>
@@ -246,7 +230,7 @@ export default function AdminPayments() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              ৳{paymentRequests.reduce((sum, r) => sum + r.amountTk, 0).toLocaleString()}
+              ৳{paymentRequests.reduce((sum, r) => sum + (r.amountTk || 0), 0).toLocaleString()}
             </div>
             <p className="text-xs text-gray-500 mt-1">All requests</p>
           </CardContent>
@@ -260,13 +244,14 @@ export default function AdminPayments() {
             <div className="text-2xl font-bold text-orange-600">
               ৳{paymentRequests
                 .filter(r => r.status === 'pending')
-                .reduce((sum, r) => sum + r.amountTk, 0)
+                .reduce((sum, r) => sum + (r.amountTk || 0), 0)
                 .toLocaleString()}
             </div>
             <p className="text-xs text-gray-500 mt-1">Awaiting approval</p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -297,14 +282,19 @@ export default function AdminPayments() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredRequests.map((request) => (
-              <div key={request.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Loading payment requests...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredRequests.map((request) => (
+              <div key={request._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-4 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">
-                        Request #{request.id}
+                        Request #{request._id.slice(-8)}
                       </h3>
                       {getStatusBadge(request.status)}
                       {getMethodBadge(request.method)}
@@ -312,21 +302,23 @@ export default function AdminPayments() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <h4 className="font-medium text-gray-900">{request.hostName}</h4>
-                        <p className="text-sm text-gray-600 flex items-center mt-1">
-                          <User className="h-4 w-4 mr-1" />
-                          {request.hostEmail}
-                        </p>
+                        <h4 className="font-medium text-gray-900">{request.hostId.displayName}</h4>
+                        {request.hostId.locationName && (
+                          <p className="text-sm text-gray-600 flex items-center mt-1">
+                            <User className="h-4 w-4 mr-1" />
+                            {request.hostId.locationName}
+                          </p>
+                        )}
                       </div>
                       
                       <div>
                         <p className="text-lg font-semibold text-gray-900 flex items-center">
                           <DollarSign className="h-5 w-5 mr-1" />
-                          ৳{request.amountTk.toLocaleString()}
+                          ৳{(request.amountTk || 0).toLocaleString()}
                         </p>
                         <p className="text-sm text-gray-600 flex items-center mt-1">
                           <Calendar className="h-4 w-4 mr-1" />
-                          {format(new Date(request.requestedAt), 'MMM dd, yyyy HH:mm')}
+                          {format(new Date(request.createdAt), 'MMM dd, yyyy HH:mm')}
                         </p>
                       </div>
                     </div>
@@ -334,32 +326,27 @@ export default function AdminPayments() {
                     <div className="mt-4">
                       <p className="text-sm font-medium text-gray-600 mb-1">Account Details:</p>
                       <div className="bg-gray-50 p-3 rounded-lg">
-                        {request.method === 'bank_transfer' && (
+                        {request.method.type === 'bank' && request.method.bankFields && (
                           <div className="space-y-1">
-                            <p className="text-sm"><span className="font-medium">Bank:</span> {request.accountDetails.bankName}</p>
-                            <p className="text-sm"><span className="font-medium">Account:</span> {request.accountDetails.accountNumber}</p>
+                            <p className="text-sm"><span className="font-medium">Bank:</span> {request.method.bankFields.bankName}</p>
+                            <p className="text-sm"><span className="font-medium">Account:</span> {request.method.accountNo}</p>
+                            {request.method.bankFields.accountHolderName && (
+                              <p className="text-sm"><span className="font-medium">Holder:</span> {request.method.bankFields.accountHolderName}</p>
+                            )}
                           </div>
                         )}
-                        {request.method === 'mobile_banking' && (
+                        {(request.method.type === 'bkash' || request.method.type === 'nagad') && (
                           <div className="space-y-1">
-                            <p className="text-sm"><span className="font-medium">Provider:</span> {request.accountDetails.provider}</p>
-                            <p className="text-sm"><span className="font-medium">Number:</span> {request.accountDetails.mobileNumber}</p>
+                            <p className="text-sm"><span className="font-medium">Provider:</span> {request.method.type.toUpperCase()}</p>
+                            <p className="text-sm"><span className="font-medium">Number:</span> {request.method.accountNo}</p>
                           </div>
                         )}
                       </div>
                     </div>
                     
-                    {request.notes && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Notes:</span> {request.notes}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {request.processedAt && (
+                    {request.status !== 'pending' && (
                       <div className="mt-2 text-sm text-gray-500">
-                        <span className="font-medium">Processed:</span> {format(new Date(request.processedAt), 'MMM dd, yyyy HH:mm')}
+                        <span className="font-medium">Processed:</span> {format(new Date(request.updatedAt), 'MMM dd, yyyy HH:mm')}
                       </div>
                     )}
                   </div>
@@ -374,15 +361,17 @@ export default function AdminPayments() {
                       </DialogTrigger>
                       <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                          <DialogTitle>Payment Request Details - #{request.id}</DialogTitle>
+                          <DialogTitle>Payment Request Details - #{request._id.slice(-8)}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-6">
                           {/* Host Information */}
                           <div>
                             <h3 className="font-semibold text-lg mb-2">Host Information</h3>
                             <div className="bg-gray-50 p-4 rounded-lg">
-                              <p className="font-medium">{request.hostName}</p>
-                              <p className="text-sm text-gray-600">{request.hostEmail}</p>
+                              <p className="font-medium">{request.hostId.displayName}</p>
+                              {request.hostId.locationName && (
+                                <p className="text-sm text-gray-600">{request.hostId.locationName}</p>
+                              )}
                             </div>
                           </div>
                           
@@ -392,7 +381,7 @@ export default function AdminPayments() {
                             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                               <div className="flex justify-between">
                                 <span className="font-medium">Amount:</span>
-                                <span className="font-semibold">৳{request.amountTk.toLocaleString()}</span>
+                                <span className="font-semibold">৳{(request.amountTk || 0).toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="font-medium">Method:</span>
@@ -409,42 +398,39 @@ export default function AdminPayments() {
                           <div>
                             <h3 className="font-semibold text-lg mb-2">Account Details</h3>
                             <div className="bg-gray-50 p-4 rounded-lg">
-                              {request.method === 'bank_transfer' && (
+                              {request.method.type === 'bank' && request.method.bankFields && (
                                 <div className="space-y-2">
                                   <div>
                                     <span className="font-medium">Bank Name:</span>
-                                    <p className="text-sm">{request.accountDetails.bankName}</p>
+                                    <p className="text-sm">{request.method.bankFields.bankName}</p>
                                   </div>
                                   <div>
                                     <span className="font-medium">Account Number:</span>
-                                    <p className="text-sm font-mono">{request.accountDetails.accountNumber}</p>
+                                    <p className="text-sm font-mono">{request.method.accountNo}</p>
                                   </div>
+                                  {request.method.bankFields.accountHolderName && (
+                                    <div>
+                                      <span className="font-medium">Account Holder:</span>
+                                      <p className="text-sm">{request.method.bankFields.accountHolderName}</p>
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                              {request.method === 'mobile_banking' && (
+                              {(request.method.type === 'bkash' || request.method.type === 'nagad') && (
                                 <div className="space-y-2">
                                   <div>
                                     <span className="font-medium">Provider:</span>
-                                    <p className="text-sm">{request.accountDetails.provider}</p>
+                                    <p className="text-sm">{request.method.type.toUpperCase()}</p>
                                   </div>
                                   <div>
-                                    <span className="font-medium">Mobile Number:</span>
-                                    <p className="text-sm font-mono">{request.accountDetails.mobileNumber}</p>
+                                    <span className="font-medium">Account Number:</span>
+                                    <p className="text-sm font-mono">{request.method.accountNo}</p>
                                   </div>
                                 </div>
                               )}
                             </div>
                           </div>
                           
-                          {/* Notes */}
-                          {request.notes && (
-                            <div>
-                              <h3 className="font-semibold text-lg mb-2">Notes</h3>
-                              <div className="bg-gray-50 p-4 rounded-lg">
-                                <p className="text-sm">{request.notes}</p>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -453,7 +439,7 @@ export default function AdminPayments() {
                       <>
                         <Button
                           size="sm"
-                          onClick={() => handleApprove(request.id)}
+                          onClick={() => handleApprove(request._id)}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <Check className="h-4 w-4 mr-1" />
@@ -462,7 +448,7 @@ export default function AdminPayments() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleReject(request.id)}
+                          onClick={() => handleReject(request._id)}
                         >
                           <X className="h-4 w-4 mr-1" />
                           Reject
@@ -474,12 +460,13 @@ export default function AdminPayments() {
               </div>
             ))}
             
-            {filteredRequests.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No payment requests found matching your criteria.
-              </div>
-            )}
-          </div>
+              {filteredRequests.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No payment requests found matching your criteria.
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
