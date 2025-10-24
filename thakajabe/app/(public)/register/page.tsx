@@ -51,6 +51,7 @@ export default function RegisterPage() {
         name: data.name,
         email: data.email,
         password: data.password,
+        phone: '', // Add required phone field
       });
 
       if (response.success) {

@@ -102,7 +102,7 @@ export default function HostListings() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20 md:pb-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
@@ -118,7 +118,7 @@ export default function HostListings() {
 
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20 md:pb-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
@@ -136,7 +136,7 @@ export default function HostListings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
@@ -150,8 +150,8 @@ export default function HostListings() {
         </Link>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Summary Cards - Hidden on mobile */}
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Total Listings</CardTitle>
@@ -201,16 +201,16 @@ export default function HostListings() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
             <CardTitle>Listings</CardTitle>
             <div className="flex items-center space-x-4">
-              <div className="relative">
+              <div className="relative w-full md:w-auto">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Search listings..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
+                  className="pl-10 w-full md:w-64"
                 />
               </div>
             </div>

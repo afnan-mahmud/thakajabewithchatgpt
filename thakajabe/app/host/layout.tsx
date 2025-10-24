@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { HostSidebar } from '@/components/host/HostSidebar';
 import { HostHeader } from '@/components/host/HostHeader';
+import { HostBottomNav } from '@/components/host/HostBottomNav';
 
 export default function HostLayout({
   children,
@@ -43,12 +44,13 @@ export default function HostLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <HostHeader />
-      <div className="flex">
+      <div className="md:flex">
         <HostSidebar />
-        <main className="flex-1 p-6 ml-64">
+        <main className="flex-1 p-6 md:ml-64 pb-20 md:pb-6">
           {children}
         </main>
       </div>
+      <HostBottomNav />
     </div>
   );
 }

@@ -48,12 +48,12 @@ export default function HostDashboard() {
 
   if (statsLoading || bookingsLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20 md:pb-0">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Host Dashboard</h1>
         </div>
         
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="hidden md:grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -101,7 +101,7 @@ export default function HostDashboard() {
 
   if (statsError || bookingsError) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20 md:pb-0">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Host Dashboard</h1>
         </div>
@@ -212,7 +212,7 @@ export default function HostDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Host Dashboard</h1>
         <div className="flex items-center space-x-2">
@@ -222,8 +222,8 @@ export default function HostDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Cards - Hidden on mobile */}
+      <div className="hidden md:grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, index) => (
           <Card key={index}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

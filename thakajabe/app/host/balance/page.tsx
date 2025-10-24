@@ -97,7 +97,7 @@ export default function HostBalance() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20 md:pb-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Balance & Payouts</h1>
@@ -113,7 +113,7 @@ export default function HostBalance() {
 
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20 md:pb-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Balance & Payouts</h1>
@@ -131,7 +131,7 @@ export default function HostBalance() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Balance & Payouts</h1>
@@ -139,8 +139,8 @@ export default function HostBalance() {
         </div>
       </div>
 
-      {/* Earnings Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Earnings Summary - Hidden on mobile */}
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Available Balance</CardTitle>

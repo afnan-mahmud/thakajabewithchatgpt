@@ -70,7 +70,7 @@ export default function HostMessages() {
 
   if (threadsLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20 md:pb-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
@@ -86,7 +86,7 @@ export default function HostMessages() {
 
   if (threadsError) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20 md:pb-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
@@ -104,7 +104,7 @@ export default function HostMessages() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Messages</h1>

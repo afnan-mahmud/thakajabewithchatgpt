@@ -25,7 +25,7 @@ export function HostSidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg">
+    <div className="hidden md:block fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg">
       <div className="flex h-full flex-col">
         <div className="flex h-16 items-center px-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-primary">Thaka Jabe Host</h2>
