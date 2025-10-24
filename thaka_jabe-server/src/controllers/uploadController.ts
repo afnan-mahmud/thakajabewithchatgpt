@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import fs from 'fs';
-import path from 'path';
+import sharp from 'sharp';
+import { v4 as uuidv4 } from 'uuid';
 import { AppError } from '../middleware/errorHandler';
+import { uploadToR2, deleteFromR2, extractKeyFromUrl } from '../utils/r2';
 
 export const uploadImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -11,19 +12,38 @@ export const uploadImage = async (req: Request, res: Response, next: NextFunctio
       return next(error);
     }
 
-    const baseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 8080}`;
-    const imageUrl = `${baseUrl.replace(/\/$/, '')}/uploads/${req.file.filename}`;
+    try {
+      // Generate unique key for R2
+      const key = `misc/${uuidv4()}.webp`;
+      
+      // Process image with sharp
+      const processedBuffer = await sharp(req.file.buffer)
+        .resize(1920, 1920, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .webp({ quality: 80 })
+        .toBuffer();
 
-    res.json({
-      success: true,
-      message: 'Image uploaded successfully',
-      data: {
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        url: imageUrl
-      }
-    });
+      // Upload to R2
+      const imageUrl = await uploadToR2(key, processedBuffer, 'image/webp');
+
+      res.json({
+        success: true,
+        message: 'Image uploaded successfully',
+        data: {
+          filename: key,
+          originalName: req.file.originalname,
+          size: processedBuffer.length,
+          url: imageUrl
+        }
+      });
+    } catch (processingError) {
+      console.error('Image processing error:', processingError);
+      const error: AppError = new Error('Failed to process image');
+      error.statusCode = 500;
+      return next(error);
+    }
   } catch (error) {
     next(error);
   }
@@ -31,23 +51,29 @@ export const uploadImage = async (req: Request, res: Response, next: NextFunctio
 
 export const deleteImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { filename } = req.params;
-    const filePath = path.join('uploads', filename);
-
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      const error: AppError = new Error('File not found');
-      error.statusCode = 404;
+    const { url } = req.body;
+    
+    if (!url) {
+      const error: AppError = new Error('Image URL is required');
+      error.statusCode = 400;
       return next(error);
     }
 
-    // Delete file
-    fs.unlinkSync(filePath);
+    try {
+      // Extract key from URL and delete from R2
+      const key = extractKeyFromUrl(url);
+      await deleteFromR2(key);
 
-    res.json({
-      success: true,
-      message: 'Image deleted successfully'
-    });
+      res.json({
+        success: true,
+        message: 'Image deleted successfully'
+      });
+    } catch (deleteError) {
+      console.error('R2 delete error:', deleteError);
+      const error: AppError = new Error('Failed to delete image');
+      error.statusCode = 500;
+      return next(error);
+    }
   } catch (error) {
     next(error);
   }

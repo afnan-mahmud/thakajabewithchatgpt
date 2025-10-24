@@ -150,7 +150,7 @@ function PaymentContent() {
             <div className="flex space-x-4">
               <div className="relative w-24 h-24 rounded-lg overflow-hidden">
                 <Image
-                  src={`${env.IMG_BASE_URL}${room.images[0]}`}
+                  src={room.images[0].startsWith('http') ? room.images[0] : `${env.IMG_BASE_URL}${room.images[0]}`}
                   alt={room.name}
                   fill
                   className="object-cover"

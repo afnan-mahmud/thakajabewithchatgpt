@@ -147,7 +147,7 @@ function PaymentSuccessContent() {
             <div className="flex space-x-4">
               <div className="relative w-24 h-24 rounded-lg overflow-hidden">
                 <Image
-                  src={`${env.IMG_BASE_URL}${booking.room.images[0]}`}
+                  src={booking.room.images[0].startsWith('http') ? booking.room.images[0] : `${env.IMG_BASE_URL}${booking.room.images[0]}`}
                   alt={booking.room.name}
                   fill
                   className="object-cover"

@@ -1,23 +1,12 @@
 import express from 'express';
 import multer from 'multer';
-import path from 'path';
 import { uploadImage, deleteImage } from '../controllers/uploadController';
 import { requireUser } from '../middleware/auth';
 import { roomImageUpload, processRoomImages, deleteRoomImages } from '../middleware/upload';
 
 const router: express.Router = express.Router();
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// File filter for images only
 const fileFilter = (req: any, file: any, cb: any) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
@@ -26,8 +15,9 @@ const fileFilter = (req: any, file: any, cb: any) => {
   }
 };
 
+// Configure multer for general image uploads using memory storage
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
@@ -37,7 +27,7 @@ const upload = multer({
 // Routes
 router.post('/image', requireUser, upload.single('image'), uploadImage);
 router.post('/public/image', upload.single('image'), uploadImage); // Public route for host applications
-router.delete('/image/:filename', requireUser, deleteImage);
+router.delete('/image', requireUser, deleteImage); // Changed to use body with URL
 
 // Room image uploads
 router.post('/rooms/:roomId/images', requireUser, roomImageUpload.array('images', 15), processRoomImages, async (req, res) => {

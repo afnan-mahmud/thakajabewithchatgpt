@@ -1,27 +1,29 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [
-      'localhost', 
-      'thakajabe.com', 
-      'api.thakajabe.com',
-      'images.unsplash.com',
-      'res.cloudinary.com',
-      'cdn.pixabay.com',
-      'images.pexels.com',
-      'via.placeholder.com',
-      'picsum.photos',
-      'source.unsplash.com',
-      'images.unsplash.com',
-      'plus.unsplash.com',
-      'images.unsplash.com',
-      'unsplash.com',
-      'amazonaws.com',
-      's3.amazonaws.com',
-      's3-us-west-2.amazonaws.com',
-      's3-eu-west-1.amazonaws.com',
-      'firebasestorage.googleapis.com',
-      'storage.googleapis.com'
+    remotePatterns: [
+      // Cloudflare R2 patterns
+      { protocol: 'https', hostname: '*.r2.cloudflarestorage.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'thakajabeimageupload.66d3c416fc214c7311529358cd07aece.r2.cloudflarestorage.com', pathname: '/**' },
+      // Custom domain for R2 (if configured)
+      { protocol: 'https', hostname: 'images.thakajabe.com', pathname: '/**' },
+      // Production domains
+      { protocol: 'https', hostname: 'thakajabe.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'www.thakajabe.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'api.thakajabe.com', pathname: '/**' },
+      // External image sources
+      { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'plus.unsplash.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'source.unsplash.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'unsplash.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'res.cloudinary.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'cdn.pixabay.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'images.pexels.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'via.placeholder.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'picsum.photos', pathname: '/**' },
+      { protocol: 'https', hostname: '**.amazonaws.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'firebasestorage.googleapis.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'storage.googleapis.com', pathname: '/**' },
     ],
   },
   env: {

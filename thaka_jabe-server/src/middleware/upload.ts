@@ -1,37 +1,8 @@
 import multer from 'multer';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
-import path from 'path';
-import fs from 'fs';
 import { Request } from 'express';
-
-// Ensure upload directories exist
-const ensureUploadDirs = (roomId: string) => {
-  // Use local directory for development, production path for production
-  const baseDir = process.env.NODE_ENV === 'production' ? '/var/www/uploads/rooms' : 'test-uploads/rooms';
-  const uploadDir = path.join(baseDir, roomId);
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-  return uploadDir;
-};
-
-// Custom storage engine for multer
-const roomImageStorage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb) => {
-    const roomId = req.params.roomId || req.body.roomId || 'temp';
-    console.log(`[MULTER] Room ID: ${roomId}`);
-    const uploadDir = ensureUploadDirs(roomId);
-    console.log(`[MULTER] Upload directory: ${uploadDir}`);
-    cb(null, uploadDir);
-  },
-  filename: (req: Request, file: Express.Multer.File, cb) => {
-    // Generate unique filename with .webp extension
-    const uniqueName = `${uuidv4()}.webp`;
-    console.log(`[MULTER] Generated filename: ${uniqueName}`);
-    cb(null, uniqueName);
-  }
-});
+import { uploadToR2, deleteFromR2, extractKeyFromUrl } from '../utils/r2';
 
 // File filter for images only
 const imageFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
@@ -42,9 +13,9 @@ const imageFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFil
   }
 };
 
-// Multer configuration for room images
+// Multer configuration for room images using memory storage
 export const roomImageUpload = multer({
-  storage: roomImageStorage,
+  storage: multer.memoryStorage(),
   fileFilter: imageFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB per file
@@ -52,7 +23,7 @@ export const roomImageUpload = multer({
   }
 });
 
-// Image processing middleware
+// Image processing middleware for room images
 export const processRoomImages = async (req: Request, res: any, next: any) => {
   try {
     if (!req.files || !Array.isArray(req.files)) {
@@ -61,42 +32,28 @@ export const processRoomImages = async (req: Request, res: any, next: any) => {
 
     const processedFiles: string[] = [];
     const roomId = req.params.roomId || req.body.roomId || 'temp';
-    const uploadDir = ensureUploadDirs(roomId);
 
     for (const file of req.files) {
-      const inputPath = file.path;
-      const outputPath = path.join(uploadDir, file.filename);
-
       try {
+        // Generate unique key for R2
+        const key = `rooms/${roomId}/${uuidv4()}.webp`;
+        
         // Process image with sharp
-        await sharp(inputPath)
+        const processedBuffer = await sharp(file.buffer)
           .resize(1920, 1920, {
             fit: 'inside',
             withoutEnlargement: true
           })
           .webp({ quality: 80 })
-          .toFile(outputPath);
+          .toBuffer();
 
-        // Remove original file
-        fs.unlinkSync(inputPath);
-
-        // Generate public URL
-        const baseUrl = process.env.NODE_ENV === 'production' 
-          ? 'https://thakajabe.com/uploads/rooms' 
-          : 'http://localhost:3000/uploads/rooms';
-        const publicUrl = `${baseUrl}/${roomId}/${file.filename}`;
+        // Upload to R2
+        const publicUrl = await uploadToR2(key, processedBuffer, 'image/webp');
         processedFiles.push(publicUrl);
 
         console.log(`[IMAGE_PROCESS] Processed: ${file.originalname} -> ${publicUrl}`);
       } catch (error) {
         console.error(`[IMAGE_PROCESS] Error processing ${file.originalname}:`, error);
-        // Remove failed file
-        if (fs.existsSync(inputPath)) {
-          fs.unlinkSync(inputPath);
-        }
-        if (fs.existsSync(outputPath)) {
-          fs.unlinkSync(outputPath);
-        }
       }
     }
 
@@ -112,25 +69,13 @@ export const processRoomImages = async (req: Request, res: any, next: any) => {
 // Delete room images helper
 export const deleteRoomImages = async (roomId: string, imageUrls: string[]) => {
   try {
-    const baseDir = process.env.NODE_ENV === 'production' ? '/var/www/uploads/rooms' : 'test-uploads/rooms';
-    const uploadDir = path.join(baseDir, roomId);
-    
     for (const imageUrl of imageUrls) {
-      const filename = path.basename(imageUrl);
-      const filePath = path.join(uploadDir, filename);
-      
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log(`[IMAGE_DELETE] Deleted: ${filePath}`);
-      }
-    }
-
-    // Remove room directory if empty
-    if (fs.existsSync(uploadDir)) {
-      const files = fs.readdirSync(uploadDir);
-      if (files.length === 0) {
-        fs.rmdirSync(uploadDir);
-        console.log(`[IMAGE_DELETE] Removed empty directory: ${uploadDir}`);
+      try {
+        const key = extractKeyFromUrl(imageUrl);
+        await deleteFromR2(key);
+        console.log(`[IMAGE_DELETE] Deleted from R2: ${key}`);
+      } catch (error) {
+        console.error(`[IMAGE_DELETE] Error deleting ${imageUrl}:`, error);
       }
     }
   } catch (error) {

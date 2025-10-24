@@ -1,6 +1,6 @@
 import express from 'express';
 import { HostProfile, Room, Booking, User, AccountLedger } from '../models';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdmin, AuthenticatedRequest } from '../middleware/auth';
 import { hostApprovalSchema, roomApprovalSchema, paginationSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 
@@ -184,7 +184,7 @@ router.get('/bookings', requireAdmin, validateQuery(paginationSchema), async (re
 // @route   POST /api/admin/hosts/:id/approve
 // @desc    Approve host application
 // @access  Private (admin)
-router.post('/hosts/:id/approve', requireAdmin, validateBody(hostApprovalSchema), async (req, res) => {
+router.post('/hosts/:id/approve', requireAdmin, validateBody(hostApprovalSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const hostProfile = await HostProfile.findById(req.params.id);
     if (!hostProfile) {
@@ -218,7 +218,7 @@ router.post('/hosts/:id/approve', requireAdmin, validateBody(hostApprovalSchema)
 // @route   POST /api/admin/hosts/:id/reject
 // @desc    Reject host application
 // @access  Private (admin)
-router.post('/hosts/:id/reject', requireAdmin, validateBody(hostApprovalSchema), async (req, res) => {
+router.post('/hosts/:id/reject', requireAdmin, validateBody(hostApprovalSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const hostProfile = await HostProfile.findById(req.params.id);
     if (!hostProfile) {
@@ -252,20 +252,42 @@ router.post('/hosts/:id/reject', requireAdmin, validateBody(hostApprovalSchema),
 // @route   POST /api/admin/rooms/:id/approve
 // @desc    Approve room listing
 // @access  Private (admin)
-router.post('/rooms/:id/approve', requireAdmin, validateBody(roomApprovalSchema), async (req, res) => {
+router.post('/rooms/:id/approve', requireAdmin, validateBody(roomApprovalSchema), async (req: AuthenticatedRequest, res) => {
   try {
+    console.log('Admin approve room request:', {
+      roomId: req.params.id,
+      body: req.body,
+      user: req.user
+    });
+
     const room = await Room.findById(req.params.id);
     if (!room) {
+      console.log('Room not found:', req.params.id);
       return res.status(404).json({
         success: false,
         message: 'Room not found'
       });
     }
 
+    console.log('Room found:', {
+      id: room._id,
+      status: room.status,
+      basePriceTk: room.basePriceTk,
+      commissionTk: room.commissionTk
+    });
+
     room.status = 'approved';
     room.commissionTk = req.body.commissionTk || room.commissionTk;
     room.totalPriceTk = room.basePriceTk + room.commissionTk;
+    
+    console.log('Updating room with:', {
+      status: room.status,
+      commissionTk: room.commissionTk,
+      totalPriceTk: room.totalPriceTk
+    });
+
     await room.save();
+    console.log('Room approved successfully:', room._id);
 
     res.json({
       success: true,
@@ -290,7 +312,7 @@ router.post('/rooms/:id/approve', requireAdmin, validateBody(roomApprovalSchema)
 // @route   POST /api/admin/rooms/:id/reject
 // @desc    Reject room listing
 // @access  Private (admin)
-router.post('/rooms/:id/reject', requireAdmin, validateBody(roomApprovalSchema), async (req, res) => {
+router.post('/rooms/:id/reject', requireAdmin, validateBody(roomApprovalSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) {

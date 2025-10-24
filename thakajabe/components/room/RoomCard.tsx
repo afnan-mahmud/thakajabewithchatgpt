@@ -7,13 +7,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Room } from '@/lib/store';
 import { env } from '@/lib/env';
 
+// Helper function to resolve image URLs (supports both relative and absolute URLs)
+const resolveImageSrc = (image: string) => {
+  if (image.startsWith('http://') || image.startsWith('https://')) return image;
+  const normalized = image.startsWith('/') ? image : `/${image}`;
+  return `${env.IMG_BASE_URL}${normalized}`;
+};
+
 interface RoomCardProps {
   room: Room;
 }
 
 export function RoomCard({ room }: RoomCardProps) {
   const imageUrl = room.images[0] 
-    ? `${env.IMG_BASE_URL}${room.images[0]}`
+    ? resolveImageSrc(room.images[0])
     : '/placeholder-room.jpg';
 
   return (

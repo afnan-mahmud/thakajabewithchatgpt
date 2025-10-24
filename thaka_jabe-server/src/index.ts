@@ -95,12 +95,7 @@ app.use(compression());
 // Logging middleware
 app.use(morgan('combined'));
 
-// Serve static files from uploads directory
-const uploadsDir = path.resolve(process.cwd(), 'uploads');
-app.use('/uploads', express.static(uploadsDir, {
-  extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
-  fallthrough: false,
-}));
+// Static file serving removed - all files now served from Cloudflare R2
 
 // Health check endpoint
 app.get('/health', (req, res) => {

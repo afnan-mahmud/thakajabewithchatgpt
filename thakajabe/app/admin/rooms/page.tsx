@@ -67,8 +67,8 @@ export default function AdminRooms() {
       const response = await api.admin.rooms();
       
       if (response.success && response.data) {
-        setRooms(response.data);
-        setFilteredRooms(response.data);
+        setRooms(response.data as Room[]);
+        setFilteredRooms(response.data as Room[]);
       } else {
         setError(response.message || 'Failed to fetch rooms');
       }
@@ -103,13 +103,16 @@ export default function AdminRooms() {
     setFilteredRooms(filtered);
   }, [rooms, searchTerm, activeTab]);
 
-  const handleApprove = async (roomId: string) => {
+  const handleApprove = async (roomId: string, customCommission?: number) => {
     try {
       setActionLoading(roomId);
       
+      // Use custom commission if provided, otherwise use the state value
+      const commissionToUse = customCommission !== undefined ? customCommission : (commissionTk || 0);
+      
       const response = await api.admin.approveRoom(roomId, {
         status: 'approved',
-        commissionTk: commissionTk || 0
+        commissionTk: commissionToUse
       });
       
       if (response.success) {
@@ -420,15 +423,13 @@ export default function AdminRooms() {
                         {room.status === 'pending' && (
                           <div className="flex space-x-2">
                             <Button
-                              onClick={() => {
-                                setSelectedRoom(room);
-                                setCommissionTk(room.commissionTk);
-                              }}
+                              onClick={() => handleApprove(room._id, room.commissionTk)}
+                              disabled={actionLoading === room._id}
                               size="sm"
                               className="bg-green-600 hover:bg-green-700"
                             >
                               <Check className="h-4 w-4 mr-1" />
-                              Quick Approve
+                              {actionLoading === room._id ? 'Approving...' : 'Quick Approve'}
                             </Button>
                             <Button
                               onClick={() => handleReject(room._id)}

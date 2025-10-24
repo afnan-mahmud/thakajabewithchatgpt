@@ -141,7 +141,7 @@ export default function BookingsPage() {
                     {/* Room Image */}
                     <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
                       <Image
-                        src={`${env.IMG_BASE_URL}${booking.room.images[0]}`}
+                        src={booking.room.images[0].startsWith('http') ? booking.room.images[0] : `${env.IMG_BASE_URL}${booking.room.images[0]}`}
                         alt={booking.room.name}
                         fill
                         className="object-cover"

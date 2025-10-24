@@ -54,7 +54,8 @@ Create a `.env.local` file in the root directory:
 ```env
 # API Configuration
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api
-NEXT_PUBLIC_IMG_BASE_URL=http://localhost:8080
+# Image base URL - now points to Cloudflare R2
+NEXT_PUBLIC_IMG_BASE_URL=https://thakajabeimageupload.66d3c416fc214c7311529358cd07aece.r2.cloudflarestorage.com
 
 # Analytics & Tracking
 NEXT_PUBLIC_FB_PIXEL_ID=your_facebook_pixel_id
