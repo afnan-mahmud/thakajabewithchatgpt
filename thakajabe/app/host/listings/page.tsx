@@ -220,14 +220,15 @@ export default function HostListings() {
           <div className="space-y-4">
             {filteredListings.map((listing) => (
               <div key={listing._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start space-x-4">
-                  <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0">
+                <div className="flex flex-col md:flex-row md:items-start space-y-3 md:space-y-0 md:space-x-4">
+                  {/* Image - Full width on mobile, fixed size on desktop */}
+                  <div className="w-full h-40 md:w-24 md:h-24 bg-gray-200 rounded-lg flex-shrink-0 md:flex-shrink-0">
                     {listing.images && listing.images[0] ? (
                       <Image
                         src={listing.images[0].url}
                         alt={listing.title}
-                        width={96}
-                        height={96}
+                        width={400}
+                        height={160}
                         className="w-full h-full object-cover rounded-lg"
                       />
                     ) : (
@@ -237,27 +238,26 @@ export default function HostListings() {
                     )}
                   </div>
                   
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center space-x-3 mb-1">
+                  {/* Content - Full width on mobile */}
+                  <div className="flex-1 min-w-0 w-full md:w-auto">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between space-y-3 md:space-y-0">
+                      <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                           <h3 className="text-lg font-semibold text-gray-900">{listing.title}</h3>
-                          {getStatusBadge(listing.status)}
-                          {listing.instantBooking && (
-                            <Badge variant="outline" className="text-blue-600 border-blue-600">
-                              Instant Booking
-                            </Badge>
-                          )}
+                          <div className="flex items-center space-x-2">
+                            {getStatusBadge(listing.status)}
+                            {listing.instantBooking && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-600">
+                                Instant Booking
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">{listing.description}</p>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mt-2 text-sm text-gray-500">
                           <div className="flex items-center">
                             <MapPin className="h-4 w-4 mr-1" />
                             {listing.locationName}
-                          </div>
-                          <div className="flex items-center">
-                            <Home className="h-4 w-4 mr-1" />
-                            {listing.roomType}
                           </div>
                           <div className="flex items-center">
                             <DollarSign className="h-4 w-4 mr-1" />
@@ -266,7 +266,7 @@ export default function HostListings() {
                         </div>
                       </div>
                       
-                      <div className="text-right">
+                      <div className="text-left md:text-right">
                         <div className="text-lg font-semibold">৳{listing.totalPriceTk.toLocaleString()}</div>
                         <div className="text-sm text-gray-500">
                           Base: ৳{listing.basePriceTk.toLocaleString()}
@@ -277,61 +277,40 @@ export default function HostListings() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex flex-wrap gap-2">
-                        {listing.amenities.map((amenity, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {amenity}
-                          </Badge>
-                        ))}
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mt-4 space-y-3 lg:space-y-0">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium">Instant Booking:</span>
+                        <Switch
+                          checked={listing.instantBooking}
+                          onCheckedChange={(enabled) => handleToggleInstantBooking(listing._id, enabled)}
+                          disabled={listing.status !== 'approved'}
+                        />
                       </div>
                       
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-medium">Instant Booking:</span>
-                          <Switch
-                            checked={listing.instantBooking}
-                            onCheckedChange={(enabled) => handleToggleInstantBooking(listing._id, enabled)}
-                            disabled={listing.status !== 'approved'}
-                          />
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Link href={`/host/listings/${listing._id}`}>
-                            <Button variant="outline" size="sm">
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                          </Link>
-                          
-                          <Link href={`/host/listings/${listing._id}/edit`}>
-                            <Button variant="outline" size="sm">
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
-                            </Button>
-                          </Link>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(listing._id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={`/host/listings/${listing._id}`}>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
                           </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4 mt-3 text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        Created: {new Date(listing.createdAt).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        Updated: {new Date(listing.updatedAt).toLocaleDateString()}
+                        </Link>
+                        
+                        <Link href={`/host/listings/${listing._id}/edit`}>
+                          <Button variant="outline" size="sm">
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        </Link>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(listing._id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </div>
