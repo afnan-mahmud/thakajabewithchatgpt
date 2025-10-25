@@ -42,10 +42,6 @@ interface BackendRoom {
   updatedAt: string;
 }
 
-interface RoomResponse {
-  success: boolean;
-  data: BackendRoom;
-}
 import { 
   Star, 
   MapPin, 
@@ -80,9 +76,9 @@ export default function RoomDetails() {
   const loadRoom = async () => {
     try {
       setLoading(true);
-      const response = await api.rooms.get<RoomResponse>(roomId);
+      const response = await api.rooms.get<BackendRoom>(roomId);
       if (response.success && response.data) {
-        const backendRoom: BackendRoom = response.data;
+        const backendRoom = response.data as BackendRoom;
         
         // Map backend data to frontend Room structure
         const roomData: Room = {
@@ -199,11 +195,12 @@ export default function RoomDetails() {
     return Wifi; // Default icon
   };
 
-  const amenities = room ? room.amenities?.map(amenity => ({
+  const amenities =
+  room?.amenities?.map(amenity => ({
     icon: getAmenityIcon(amenity),
     name: amenity
-  })) : [];
-
+  })) ?? [];
+  
   return (
     <Layout>
       <div className="bg-white">
