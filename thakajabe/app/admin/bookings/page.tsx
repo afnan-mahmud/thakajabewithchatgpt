@@ -20,110 +20,48 @@ import {
   Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAdminBookings } from '@/lib/hooks/useAdminData';
 
 interface Booking {
-  id: string;
-  roomId: string;
-  roomTitle: string;
-  roomAddress: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  userPhone: string;
+  _id: string;
+  roomId: {
+    _id: string;
+    title: string;
+    locationName: string;
+    images: Array<{ url: string; w: number; h: number }>;
+  };
+  userId: {
+    _id: string;
+    name: string;
+    email: string;
+    phone: string;
+  };
+  hostId: {
+    _id: string;
+    displayName: string;
+  };
   checkIn: string;
   checkOut: string;
   guests: number;
-  totalAmount: number;
+  mode: 'instant' | 'request';
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  paymentStatus: 'unpaid' | 'paid' | 'failed' | 'refunded';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  amountTk: number;
   transactionId?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export default function AdminBookings() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const { bookings, loading, error } = useAdminBookings();
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with actual API calls
-  const mockBookings: Booking[] = [
-    {
-      id: '1',
-      roomId: 'room1',
-      roomTitle: 'Luxury Apartment in Gulshan',
-      roomAddress: 'House 123, Road 45, Gulshan 1',
-      userId: 'user1',
-      userName: 'John Doe',
-      userEmail: 'john@example.com',
-      userPhone: '+8801234567890',
-      checkIn: '2024-01-20',
-      checkOut: '2024-01-22',
-      guests: 2,
-      totalAmount: 16000,
-      status: 'confirmed',
-      paymentStatus: 'paid',
-      transactionId: 'TXN123456789',
-      createdAt: '2024-01-15',
-    },
-    {
-      id: '2',
-      roomId: 'room2',
-      roomTitle: 'Cozy Studio in Dhanmondi',
-      roomAddress: 'House 456, Road 27, Dhanmondi',
-      userId: 'user2',
-      userName: 'Jane Smith',
-      userEmail: 'jane@example.com',
-      userPhone: '+8801234567891',
-      checkIn: '2024-01-25',
-      checkOut: '2024-01-27',
-      guests: 1,
-      totalAmount: 11000,
-      status: 'pending',
-      paymentStatus: 'unpaid',
-      createdAt: '2024-01-18',
-    },
-    {
-      id: '3',
-      roomId: 'room3',
-      roomTitle: 'Family House in Uttara',
-      roomAddress: 'House 789, Sector 7, Uttara',
-      userId: 'user3',
-      userName: 'Mike Johnson',
-      userEmail: 'mike@example.com',
-      userPhone: '+8801234567892',
-      checkIn: '2024-01-10',
-      checkOut: '2024-01-12',
-      guests: 4,
-      totalAmount: 24000,
-      status: 'cancelled',
-      paymentStatus: 'refunded',
-      transactionId: 'TXN987654321',
-      createdAt: '2024-01-05',
-    },
-  ];
-
-  useEffect(() => {
-    fetchBookings();
-  }, []);
 
   useEffect(() => {
     filterBookings();
   }, [bookings, searchTerm, statusFilter]);
-
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      // Mock API call
-      setBookings(mockBookings);
-    } catch (error) {
-      console.error('Failed to fetch bookings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filterBookings = () => {
     let filtered = bookings;
@@ -136,10 +74,10 @@ export default function AdminBookings() {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(booking =>
-        booking.roomTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.id.toLowerCase().includes(searchTerm.toLowerCase())
+        booking.roomId.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.userId.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.userId.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking._id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -162,7 +100,7 @@ export default function AdminBookings() {
 
   const getPaymentStatusBadge = (status: string) => {
     const variants = {
-      unpaid: 'bg-gray-100 text-gray-800',
+      pending: 'bg-gray-100 text-gray-800',
       paid: 'bg-green-100 text-green-800',
       failed: 'bg-red-100 text-red-800',
       refunded: 'bg-blue-100 text-blue-800',
@@ -213,37 +151,46 @@ export default function AdminBookings() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredBookings.map((booking) => (
-              <div key={booking.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-4 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Booking #{booking.id}
-                      </h3>
-                      {getStatusBadge(booking.status)}
-                      {getPaymentStatusBadge(booking.paymentStatus)}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-gray-500">Loading bookings...</div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-red-500">Error: {error}</div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredBookings.map((booking) => (
+                <div key={booking._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-4 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Booking #{booking._id.slice(-8)}
+                        </h3>
+                        {getStatusBadge(booking.status)}
+                        {getPaymentStatusBadge(booking.paymentStatus)}
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <h4 className="font-medium text-gray-900">{booking.roomTitle}</h4>
+                        <h4 className="font-medium text-gray-900">{booking.roomId.title}</h4>
                         <p className="text-sm text-gray-600 flex items-center mt-1">
                           <MapPin className="h-4 w-4 mr-1" />
-                          {booking.roomAddress}
+                          {booking.roomId.locationName}
                         </p>
                       </div>
                       
                       <div>
-                        <h4 className="font-medium text-gray-900">{booking.userName}</h4>
+                        <h4 className="font-medium text-gray-900">{booking.userId.name}</h4>
                         <p className="text-sm text-gray-600 flex items-center mt-1">
                           <Mail className="h-4 w-4 mr-1" />
-                          {booking.userEmail}
+                          {booking.userId.email}
                         </p>
                         <p className="text-sm text-gray-600 flex items-center">
                           <Phone className="h-4 w-4 mr-1" />
-                          {booking.userPhone}
+                          {booking.userId.phone}
                         </p>
                       </div>
                     </div>
@@ -274,7 +221,7 @@ export default function AdminBookings() {
                         <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
                         <div>
                           <p className="font-medium">Total Amount</p>
-                          <p className="font-semibold">৳{booking.totalAmount.toLocaleString()}</p>
+                          <p className="font-semibold">৳{booking.amountTk.toLocaleString()}</p>
                         </div>
                       </div>
                     </div>
@@ -296,15 +243,15 @@ export default function AdminBookings() {
                       </DialogTrigger>
                       <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                          <DialogTitle>Booking Details - #{booking.id}</DialogTitle>
+                          <DialogTitle>Booking Details - #{booking._id.slice(-8)}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-6">
                           {/* Room Information */}
                           <div>
                             <h3 className="font-semibold text-lg mb-2">Room Information</h3>
                             <div className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="font-medium">{booking.roomTitle}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{booking.roomAddress}</p>
+                              <h4 className="font-medium">{booking.roomId.title}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{booking.roomId.locationName}</p>
                             </div>
                           </div>
                           
@@ -312,9 +259,9 @@ export default function AdminBookings() {
                           <div>
                             <h3 className="font-semibold text-lg mb-2">Guest Information</h3>
                             <div className="bg-gray-50 p-4 rounded-lg">
-                              <p className="font-medium">{booking.userName}</p>
-                              <p className="text-sm text-gray-600">{booking.userEmail}</p>
-                              <p className="text-sm text-gray-600">{booking.userPhone}</p>
+                              <p className="font-medium">{booking.userId.name}</p>
+                              <p className="text-sm text-gray-600">{booking.userId.email}</p>
+                              <p className="text-sm text-gray-600">{booking.userId.phone}</p>
                             </div>
                           </div>
                           
@@ -336,7 +283,7 @@ export default function AdminBookings() {
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                                <p className="font-semibold">৳{booking.totalAmount.toLocaleString()}</p>
+                                <p className="font-semibold">৳{booking.amountTk.toLocaleString()}</p>
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-gray-600">Status</p>
@@ -372,7 +319,8 @@ export default function AdminBookings() {
                 No bookings found matching your criteria.
               </div>
             )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -137,7 +137,9 @@ export function useAdminBookings() {
         const response = await api.admin.bookings();
         
         if (response.success && response.data) {
-          setBookings(response.data as Booking[]);
+          // Handle both response structures
+          const bookingsData = Array.isArray(response.data) ? response.data : (response.data as any).bookings;
+          setBookings(bookingsData as Booking[]);
         } else {
           setError(response.message || 'Failed to fetch bookings');
         }
