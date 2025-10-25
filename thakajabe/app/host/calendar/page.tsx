@@ -347,7 +347,7 @@ export default function HostCalendar() {
           <CardContent>
             <div className="text-2xl font-bold">
               {unavailableDates.filter(date => {
-                const dateObj = new Date(date.startDate);
+                const dateObj = new Date(date.date);
                 const now = new Date();
                 return dateObj.getMonth() === now.getMonth() && dateObj.getFullYear() === now.getFullYear();
               }).length}

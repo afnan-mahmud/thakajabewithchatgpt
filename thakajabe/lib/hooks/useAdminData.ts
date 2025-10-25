@@ -75,7 +75,7 @@ export function useAdminStats() {
         const response = await api.admin.stats();
         
         if (response.success && response.data) {
-          setStats(response.data);
+          setStats(response.data as AdminStats);
         } else {
           setError(response.message || 'Failed to fetch stats');
         }
@@ -106,7 +106,7 @@ export function useHostApplications() {
         const response = await api.admin.hosts();
         
         if (response.success && response.data) {
-          setApplications(response.data);
+          setApplications(response.data as HostApplication[]);
         } else {
           setError(response.message || 'Failed to fetch host applications');
         }
@@ -137,7 +137,7 @@ export function useAdminBookings() {
         const response = await api.admin.bookings();
         
         if (response.success && response.data) {
-          setBookings(response.data);
+          setBookings(response.data as Booking[]);
         } else {
           setError(response.message || 'Failed to fetch bookings');
         }

@@ -163,7 +163,7 @@ export function useHostStats() {
         const response = await api.hosts.stats();
         
         if (response.success && response.data) {
-          setStats(response.data);
+          setStats(response.data as HostStats);
         } else {
           setError(response.message || 'Failed to fetch host stats');
         }
@@ -194,7 +194,7 @@ export function useHostRooms() {
         const response = await api.hosts.rooms();
         
         if (response.success && response.data) {
-          setRooms(response.data);
+          setRooms(response.data as HostRoom[]);
         } else {
           setError(response.message || 'Failed to fetch host rooms');
         }
@@ -225,7 +225,7 @@ export function useHostBookings() {
         const response = await api.hosts.bookings();
         
         if (response.success && response.data) {
-          setBookings(response.data);
+          setBookings(response.data as HostBooking[]);
         } else {
           setError(response.message || 'Failed to fetch host bookings');
         }
@@ -256,7 +256,7 @@ export function useHostMessageThreads() {
         const response = await api.messages.getThreads();
         
         if (response.success && response.data) {
-          setThreads(response.data.threads);
+          setThreads(response.data.threads as HostMessageThread[]);
         } else {
           setError(response.message || 'Failed to fetch message threads');
         }
@@ -292,7 +292,7 @@ export function useHostMessages(threadId: string | null) {
         const response = await api.messages.getThreadMessages(threadId);
         
         if (response.success && response.data) {
-          setMessages(response.data.messages);
+          setMessages(response.data.messages as HostMessage[]);
         } else {
           setError(response.message || 'Failed to fetch messages');
         }
@@ -314,7 +314,7 @@ export function useHostMessages(threadId: string | null) {
       
       if (response.success && response.data) {
         // Add the new message to the local state
-        setMessages(prev => [...prev, response.data]);
+        setMessages(prev => [...prev, response.data as HostMessage]);
         return response.data;
       } else {
         throw new Error(response.message || 'Failed to send message');
@@ -343,8 +343,8 @@ export function useHostCalendar() {
         const response = await api.hosts.getUnavailableDates();
         
         if (response.success && response.data) {
-          setUnavailableDates(response.data.unavailableDates);
-          setRooms(response.data.rooms);
+          setUnavailableDates(response.data.unavailableDates as HostUnavailableDate[]);
+          setRooms(response.data.rooms as HostCalendarRoom[]);
         } else {
           setError(response.message || 'Failed to fetch calendar data');
         }
@@ -366,8 +366,8 @@ export function useHostCalendar() {
         // Refresh calendar data
         const refreshResponse = await api.hosts.getUnavailableDates();
         if (refreshResponse.success && refreshResponse.data) {
-          setUnavailableDates(refreshResponse.data.unavailableDates);
-          setRooms(refreshResponse.data.rooms);
+          setUnavailableDates(refreshResponse.data.unavailableDates as HostUnavailableDate[]);
+          setRooms(refreshResponse.data.rooms as HostCalendarRoom[]);
         }
         return response.data;
       } else {
@@ -387,8 +387,8 @@ export function useHostCalendar() {
         // Refresh calendar data
         const refreshResponse = await api.hosts.getUnavailableDates();
         if (refreshResponse.success && refreshResponse.data) {
-          setUnavailableDates(refreshResponse.data.unavailableDates);
-          setRooms(refreshResponse.data.rooms);
+          setUnavailableDates(refreshResponse.data.unavailableDates as HostUnavailableDate[]);
+          setRooms(refreshResponse.data.rooms as HostCalendarRoom[]);
         }
         return response.data;
       } else {
@@ -424,7 +424,7 @@ export function useHostBalance() {
         const response = await api.hosts.balance();
         
         if (response.success && response.data) {
-          setBalance(response.data);
+          setBalance(response.data as HostBalance);
         } else {
           setError(response.message || 'Failed to fetch balance data');
         }
@@ -456,7 +456,7 @@ export function useHostTransactions(params?: { page?: number; limit?: number }) 
         const response = await api.hosts.transactions(params);
         
         if (response.success && response.data) {
-          setTransactions(response.data.transactions);
+          setTransactions(response.data.transactions as HostTransaction[]);
           setPagination(response.data.pagination);
         } else {
           setError(response.message || 'Failed to fetch transactions');
@@ -489,7 +489,7 @@ export function useHostPayouts(params?: { page?: number; limit?: number; status?
         const response = await api.payouts.getMine(params);
         
         if (response.success && response.data) {
-          setPayouts(response.data.payoutRequests);
+          setPayouts(response.data.payoutRequests as HostPayoutRequest[]);
           setPagination(response.data.pagination);
         } else {
           setError(response.message || 'Failed to fetch payout requests');
@@ -512,7 +512,7 @@ export function useHostPayouts(params?: { page?: number; limit?: number; status?
         // Refresh payouts
         const refreshResponse = await api.payouts.getMine(params);
         if (refreshResponse.success && refreshResponse.data) {
-          setPayouts(refreshResponse.data.payoutRequests);
+          setPayouts(refreshResponse.data.payoutRequests as HostPayoutRequest[]);
           setPagination(refreshResponse.data.pagination);
         }
         return response.data;

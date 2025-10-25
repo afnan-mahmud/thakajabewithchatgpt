@@ -3,6 +3,16 @@
 import { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 
+declare module 'next-auth' {
+  interface Session {
+    accessToken?: string;
+  }
+  
+  interface User {
+    phone?: string;
+  }
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: {
@@ -53,7 +63,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     email: session.user.email || '',
     name: session.user.name || '',
     role: session.user.role as 'admin' | 'host' | 'guest',
-    phone: session.user.phone,
+    phone: (session.user as any).phone,
   } : null;
 
   const value: AuthContextType = {

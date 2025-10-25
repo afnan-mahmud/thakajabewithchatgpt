@@ -368,7 +368,7 @@ export default function AdminHosts() {
                                       className="max-w-full h-32 object-contain mx-auto rounded"
                                       onError={(e) => {
                                         e.currentTarget.style.display = 'none';
-                                        e.currentTarget.nextElementSibling.style.display = 'block';
+                                        (e.currentTarget.nextElementSibling as HTMLElement)?.style && ((e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block');
                                       }}
                                     />
                                   ) : null}
@@ -387,7 +387,7 @@ export default function AdminHosts() {
                                       className="max-w-full h-32 object-contain mx-auto rounded"
                                       onError={(e) => {
                                         e.currentTarget.style.display = 'none';
-                                        e.currentTarget.nextElementSibling.style.display = 'block';
+                                        (e.currentTarget.nextElementSibling as HTMLElement)?.style && ((e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block');
                                       }}
                                     />
                                   ) : null}
