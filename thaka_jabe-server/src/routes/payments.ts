@@ -144,7 +144,7 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
 
       console.log(`[PAYMENT_INIT] SSL session created successfully: ${sslSession.sessionkey}`);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Payment session created successfully',
         data: {
@@ -154,7 +154,7 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
       });
     } else {
       console.error(`[PAYMENT_INIT] SSL session creation failed: ${sslSession.failedreason}`);
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: 'Failed to create payment session',
         error: sslSession.failedreason
@@ -162,7 +162,7 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
     }
   } catch (error) {
     console.error('[PAYMENT_INIT] Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -390,14 +390,14 @@ router.post('/ssl/ipn', async (req, res) => {
         }
       }
 
-      res.status(200).json({ status: 'success' });
+      return res.status(200).json({ status: 'success' });
     } else {
       console.error(`[PAYMENT_IPN] Payment verification failed: ${verification.status}`);
-      res.status(400).json({ error: 'Verification failed' });
+      return res.status(400).json({ error: 'Verification failed' });
     }
   } catch (error) {
     console.error('[PAYMENT_IPN] Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 

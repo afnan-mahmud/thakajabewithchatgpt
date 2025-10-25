@@ -80,7 +80,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: {
@@ -97,7 +97,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     console.error('Error details:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error',
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -149,7 +149,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Login successful',
       data: {
@@ -165,7 +165,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -197,7 +197,7 @@ router.get('/verify', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         id: user._id,
@@ -208,7 +208,7 @@ router.get('/verify', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(401).json({
+    return res.status(401).json({
       success: false,
       message: 'Invalid token'
     });

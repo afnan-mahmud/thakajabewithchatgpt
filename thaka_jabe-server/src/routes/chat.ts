@@ -207,7 +207,7 @@ router.post('/messages', requireUser, validateBody(messageCreateSchema), async (
       }
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Message sent successfully',
       data: {
@@ -220,7 +220,7 @@ router.post('/messages', requireUser, validateBody(messageCreateSchema), async (
     });
   } catch (error) {
     console.error('Send message error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -283,7 +283,7 @@ router.post('/threads', requireUser, async (req: AuthenticatedRequest, res) => {
       }
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Thread created successfully',
       data: {
@@ -296,7 +296,7 @@ router.post('/threads', requireUser, async (req: AuthenticatedRequest, res) => {
     });
   } catch (error) {
     console.error('Create thread error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -330,7 +330,7 @@ router.get('/threads/ids', requireUser, async (req: AuthenticatedRequest, res) =
 
     const threadIds = threads.map(thread => (thread._id as any).toString());
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         threadIds,
@@ -345,7 +345,7 @@ router.get('/threads/ids', requireUser, async (req: AuthenticatedRequest, res) =
     });
   } catch (error) {
     console.error('Get thread IDs error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -389,7 +389,7 @@ router.get('/threads', requireUser, validateQuery(paginationSchema), async (req:
 
     const total = await MessageThread.countDocuments(filter);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         threads,
@@ -403,7 +403,7 @@ router.get('/threads', requireUser, validateQuery(paginationSchema), async (req:
     });
   } catch (error) {
     console.error('Get threads error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -451,7 +451,7 @@ router.get('/threads/:id/messages', requireUser, validateQuery(paginationSchema)
 
     const total = await Message.countDocuments({ threadId: req.params.id });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         messages,
@@ -465,7 +465,7 @@ router.get('/threads/:id/messages', requireUser, validateQuery(paginationSchema)
     });
   } catch (error) {
     console.error('Get messages error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -507,13 +507,13 @@ router.get('/threads/:id', requireUser, async (req: AuthenticatedRequest, res) =
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: thread
     });
   } catch (error) {
     console.error('Get thread error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });

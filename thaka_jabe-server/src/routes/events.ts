@@ -95,14 +95,14 @@ router.post('/meta', requireUser, validateBody(metaEventSchema), async (req, res
 
     if (response.ok) {
       console.log(`[META_CAPI] Event sent successfully: ${eventData.event_name}`);
-      res.json({
+      return res.json({
         success: true,
         message: 'Meta event sent successfully',
         data: result
       });
     } else {
       console.error(`[META_CAPI] Failed to send event:`, result);
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: 'Failed to send Meta event',
         error: result
@@ -110,7 +110,7 @@ router.post('/meta', requireUser, validateBody(metaEventSchema), async (req, res
     }
   } catch (error) {
     console.error('[META_CAPI] Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -157,14 +157,14 @@ router.post('/tiktok', requireUser, validateBody(tiktokEventSchema), async (req,
 
     if (response.ok) {
       console.log(`[TIKTOK_CAPI] Event sent successfully: ${eventData.event}`);
-      res.json({
+      return res.json({
         success: true,
         message: 'TikTok event sent successfully',
         data: result
       });
     } else {
       console.error(`[TIKTOK_CAPI] Failed to send event:`, result);
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: 'Failed to send TikTok event',
         error: result
@@ -172,7 +172,7 @@ router.post('/tiktok', requireUser, validateBody(tiktokEventSchema), async (req,
     }
   } catch (error) {
     console.error('[TIKTOK_CAPI] Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -260,7 +260,7 @@ router.post('/booking-created', requireUser, async (req: AuthenticatedRequest, r
     console.log(`[BOOKING_EVENT] Meta response: ${metaResponse.status}`);
     console.log(`[BOOKING_EVENT] TikTok response: ${tiktokResponse.status}`);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Booking creation event tracked',
       data: {
@@ -270,7 +270,7 @@ router.post('/booking-created', requireUser, async (req: AuthenticatedRequest, r
     });
   } catch (error) {
     console.error('[BOOKING_EVENT] Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -358,7 +358,7 @@ router.post('/payment-success', requireUser, async (req: AuthenticatedRequest, r
     console.log(`[PAYMENT_EVENT] Meta response: ${metaResponse.status}`);
     console.log(`[PAYMENT_EVENT] TikTok response: ${tiktokResponse.status}`);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Payment success event tracked',
       data: {
@@ -368,7 +368,7 @@ router.post('/payment-success', requireUser, async (req: AuthenticatedRequest, r
     });
   } catch (error) {
     console.error('[PAYMENT_EVENT] Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });

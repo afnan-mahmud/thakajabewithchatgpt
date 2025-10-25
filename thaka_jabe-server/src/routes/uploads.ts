@@ -42,7 +42,7 @@ router.post('/rooms/:roomId/images', requireUser, roomImageUpload.array('images'
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: `${processedImages.length} images uploaded successfully`,
       data: {
@@ -53,7 +53,7 @@ router.post('/rooms/:roomId/images', requireUser, roomImageUpload.array('images'
     });
   } catch (error) {
     console.error('Room image upload error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -75,7 +75,7 @@ router.delete('/rooms/:roomId/images', requireUser, async (req, res) => {
 
     await deleteRoomImages(roomId, imageUrls);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Images deleted successfully',
       data: {

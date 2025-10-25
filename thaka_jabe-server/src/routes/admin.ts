@@ -197,7 +197,7 @@ router.post('/hosts/:id/approve', requireAdmin, validateBody(hostApprovalSchema)
     hostProfile.status = 'approved';
     await hostProfile.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Host application approved successfully',
       data: {
@@ -231,7 +231,7 @@ router.post('/hosts/:id/reject', requireAdmin, validateBody(hostApprovalSchema),
     hostProfile.status = 'rejected';
     await hostProfile.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Host application rejected',
       data: {
@@ -289,7 +289,7 @@ router.post('/rooms/:id/approve', requireAdmin, validateBody(roomApprovalSchema)
     await room.save();
     console.log('Room approved successfully:', room._id);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Room approved successfully',
       data: {
@@ -325,7 +325,7 @@ router.post('/rooms/:id/reject', requireAdmin, validateBody(roomApprovalSchema),
     room.status = 'rejected';
     await room.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Room rejected',
       data: {

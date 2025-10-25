@@ -29,7 +29,7 @@ router.post('/apply', requireUser, validateBody(hostApplySchema), async (req: Au
 
     await hostProfile.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Host application submitted successfully',
       data: {
@@ -40,7 +40,7 @@ router.post('/apply', requireUser, validateBody(hostApplySchema), async (req: Au
     });
   } catch (error) {
     console.error('Host application error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -62,7 +62,7 @@ router.get('/me', requireUser, async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         id: hostProfile._id,
@@ -82,7 +82,7 @@ router.get('/me', requireUser, async (req: AuthenticatedRequest, res) => {
     });
   } catch (error) {
     console.error('Get host profile error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -108,7 +108,7 @@ router.get('/admin/hosts', requireAdmin, validateQuery(paginationSchema.merge(st
 
     const total = await HostProfile.countDocuments(filter);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         hosts,
@@ -122,7 +122,7 @@ router.get('/admin/hosts', requireAdmin, validateQuery(paginationSchema.merge(st
     });
   } catch (error) {
     console.error('Get hosts error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -148,7 +148,7 @@ router.post('/admin/hosts/:id/approve', requireAdmin, validateBody(hostApprovalS
     // Update user role to host
     await User.findByIdAndUpdate(hostProfile.userId, { role: 'host' });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Host application approved successfully',
       data: {
@@ -159,7 +159,7 @@ router.post('/admin/hosts/:id/approve', requireAdmin, validateBody(hostApprovalS
     });
   } catch (error) {
     console.error('Approve host error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -182,7 +182,7 @@ router.post('/admin/hosts/:id/reject', requireAdmin, validateBody(hostApprovalSc
     hostProfile.status = 'rejected';
     await hostProfile.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Host application rejected',
       data: {
@@ -193,7 +193,7 @@ router.post('/admin/hosts/:id/reject', requireAdmin, validateBody(hostApprovalSc
     });
   } catch (error) {
     console.error('Reject host error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -244,7 +244,7 @@ router.get('/stats', requireHost, async (req: AuthenticatedRequest, res) => {
       status: 'approved' 
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         totalBookings,
@@ -280,7 +280,7 @@ router.get('/rooms', requireHost, async (req: AuthenticatedRequest, res) => {
     const rooms = await Room.find({ hostId: hostProfile._id })
       .sort({ createdAt: -1 });
 
-    res.json({
+    return res.json({
       success: true,
       data: rooms
     });
@@ -311,7 +311,7 @@ router.get('/bookings', requireHost, async (req: AuthenticatedRequest, res) => {
       .populate('userId', 'name email phone')
       .sort({ createdAt: -1 });
 
-    res.json({
+    return res.json({
       success: true,
       data: bookings
     });
@@ -396,7 +396,7 @@ router.get('/balance', requireHost, async (req: AuthenticatedRequest, res) => {
     ]);
     const monthlyEarnings = monthlyEarningsResult.length > 0 ? monthlyEarningsResult[0].total : 0;
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         totalEarnings,
@@ -483,7 +483,7 @@ router.get('/transactions', requireHost, validateQuery(paginationSchema), async 
       hostId: hostProfile._id
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         transactions,

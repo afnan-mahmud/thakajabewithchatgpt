@@ -50,7 +50,7 @@ router.post('/quote', validateBody(bookingQuoteSchema), async (req, res) => {
     const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
     const totalAmount = room.totalPriceTk * nights;
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         roomId,
@@ -67,7 +67,7 @@ router.post('/quote', validateBody(bookingQuoteSchema), async (req, res) => {
     });
   } catch (error) {
     console.error('Booking quote error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -166,7 +166,7 @@ router.post('/create', requireUser, validateBody(bookingCreateSchema), async (re
 
     // If instant booking, return payment URL
     if (mode === 'instant') {
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: 'Booking created successfully. Please complete payment.',
         data: {
@@ -178,7 +178,7 @@ router.post('/create', requireUser, validateBody(bookingCreateSchema), async (re
       });
     } else {
       // Request mode - notify host (implement notification later)
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: 'Booking request submitted. Host will review and respond.',
         data: {
@@ -190,7 +190,7 @@ router.post('/create', requireUser, validateBody(bookingCreateSchema), async (re
     }
   } catch (error) {
     console.error('Create booking error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -217,7 +217,7 @@ router.get('/mine', requireUser, validateQuery(paginationSchema.merge(statusFilt
 
     const total = await Booking.countDocuments(filter);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         bookings,
@@ -231,7 +231,7 @@ router.get('/mine', requireUser, validateQuery(paginationSchema.merge(statusFilt
     });
   } catch (error) {
     console.error('Get my bookings error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -267,7 +267,7 @@ router.get('/host/bookings', requireHost, validateQuery(paginationSchema.merge(s
 
     const total = await Booking.countDocuments(filter);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         bookings,
@@ -281,7 +281,7 @@ router.get('/host/bookings', requireHost, validateQuery(paginationSchema.merge(s
     });
   } catch (error) {
     console.error('Get host bookings error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -315,7 +315,7 @@ router.post('/:id/approve', requireUser, validateBody(bookingApprovalSchema), as
     booking.status = 'confirmed';
     await booking.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Booking approved successfully',
       data: {
@@ -326,7 +326,7 @@ router.post('/:id/approve', requireUser, validateBody(bookingApprovalSchema), as
     });
   } catch (error) {
     console.error('Approve booking error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -360,7 +360,7 @@ router.post('/:id/reject', requireUser, validateBody(bookingApprovalSchema), asy
     booking.status = 'rejected';
     await booking.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Booking rejected',
       data: {
@@ -371,7 +371,7 @@ router.post('/:id/reject', requireUser, validateBody(bookingApprovalSchema), asy
     });
   } catch (error) {
     console.error('Reject booking error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -410,7 +410,7 @@ router.put('/:id', requireUser, async (req: AuthenticatedRequest, res) => {
     
     await booking.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Booking updated successfully',
       data: {
@@ -421,7 +421,7 @@ router.put('/:id', requireUser, async (req: AuthenticatedRequest, res) => {
     });
   } catch (error) {
     console.error('Update booking error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -479,7 +479,7 @@ router.post('/:id/cancel', requireUser, async (req: AuthenticatedRequest, res) =
         });
         await refundEntry.save();
 
-        res.json({
+        return res.json({
           success: true,
           message: 'Booking cancelled with full refund',
           data: {
@@ -494,7 +494,7 @@ router.post('/:id/cancel', requireUser, async (req: AuthenticatedRequest, res) =
         booking.status = 'cancelled';
         await booking.save();
 
-        res.json({
+        return res.json({
           success: true,
           message: 'Booking cancelled. No refund available (less than 24 hours notice)',
           data: {
@@ -510,7 +510,7 @@ router.post('/:id/cancel', requireUser, async (req: AuthenticatedRequest, res) =
       booking.status = 'cancelled';
       await booking.save();
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Booking cancelled successfully',
         data: {
@@ -521,7 +521,7 @@ router.post('/:id/cancel', requireUser, async (req: AuthenticatedRequest, res) =
     }
   } catch (error) {
     console.error('Cancel booking error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -555,7 +555,7 @@ router.get('/admin/bookings', requireAdmin, validateQuery(paginationSchema.merge
 
     const total = await Booking.countDocuments(filter);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         bookings,
@@ -569,7 +569,7 @@ router.get('/admin/bookings', requireAdmin, validateQuery(paginationSchema.merge
     });
   } catch (error) {
     console.error('Get admin bookings error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });

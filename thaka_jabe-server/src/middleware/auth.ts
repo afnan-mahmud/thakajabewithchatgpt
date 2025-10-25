@@ -43,7 +43,7 @@ export const requireUser = async (req: AuthenticatedRequest, res: Response, next
       phone: user.phone,
     };
 
-    next();
+    return next();
   } catch (error) {
     return res.status(401).json({ 
       success: false, 
@@ -55,7 +55,7 @@ export const requireUser = async (req: AuthenticatedRequest, res: Response, next
 export const requireRole = (roles: ('guest' | 'host' | 'admin')[]) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // First authenticate the user
-    await requireUser(req, res, (err) => {
+    return requireUser(req, res, (err) => {
       if (err) return;
       
       // Then check role
@@ -73,7 +73,7 @@ export const requireRole = (roles: ('guest' | 'host' | 'admin')[]) => {
         });
       }
 
-      next();
+      return next();
     });
   };
 };

@@ -68,7 +68,7 @@ router.get('/threads', requireHost, validateQuery(paginationSchema), async (req:
 
     const total = await MessageThread.countDocuments({ hostId: hostProfile._id });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         threads: threadsWithMessages,
@@ -82,7 +82,7 @@ router.get('/threads', requireHost, validateQuery(paginationSchema), async (req:
     });
   } catch (error) {
     console.error('Get message threads error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -127,7 +127,7 @@ router.get('/threads/:threadId', requireHost, validateQuery(paginationSchema), a
 
     const total = await Message.countDocuments({ threadId });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         messages,
@@ -141,7 +141,7 @@ router.get('/threads/:threadId', requireHost, validateQuery(paginationSchema), a
     });
   } catch (error) {
     console.error('Get thread messages error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -198,7 +198,7 @@ router.post('/threads/:threadId', requireHost, async (req: AuthenticatedRequest,
     thread.lastMessageAt = new Date();
     await thread.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Message sent successfully',
       data: {
@@ -211,7 +211,7 @@ router.post('/threads/:threadId', requireHost, async (req: AuthenticatedRequest,
     });
   } catch (error) {
     console.error('Send message error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -264,7 +264,7 @@ router.post('/threads', requireHost, async (req: AuthenticatedRequest, res) => {
     await thread.populate('roomId', 'title images');
     await thread.populate('userId', 'name email phone');
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Thread created successfully',
       data: {
@@ -288,7 +288,7 @@ router.post('/threads', requireHost, async (req: AuthenticatedRequest, res) => {
     });
   } catch (error) {
     console.error('Create thread error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });

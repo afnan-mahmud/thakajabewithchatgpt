@@ -17,7 +17,7 @@ router.get('/me', requireUser, async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         id: user._id,
@@ -31,7 +31,7 @@ router.get('/me', requireUser, async (req: AuthenticatedRequest, res) => {
     });
   } catch (error) {
     console.error('Get profile error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -59,7 +59,7 @@ router.put('/me', requireUser, async (req: AuthenticatedRequest, res) => {
 
     await user.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Profile updated successfully',
       data: {
@@ -73,7 +73,7 @@ router.put('/me', requireUser, async (req: AuthenticatedRequest, res) => {
     });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });

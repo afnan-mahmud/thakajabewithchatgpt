@@ -33,7 +33,7 @@ router.get('/mine', requireHost, validateQuery(paginationSchema.merge(statusFilt
 
     const total = await PayoutRequest.countDocuments(filter);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         payoutRequests,
@@ -47,7 +47,7 @@ router.get('/mine', requireHost, validateQuery(paginationSchema.merge(statusFilt
     });
   } catch (error) {
     console.error('Get my payouts error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -97,7 +97,7 @@ router.post('/request', requireHost, validateBody(payoutRequestSchema), async (r
 
     await payoutRequest.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Payout request submitted successfully',
       data: {
@@ -110,7 +110,7 @@ router.post('/request', requireHost, validateBody(payoutRequestSchema), async (r
     });
   } catch (error) {
     console.error('Create payout request error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -136,7 +136,7 @@ router.get('/admin/payouts', requireAdmin, validateQuery(paginationSchema.merge(
 
     const total = await PayoutRequest.countDocuments(filter);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         payoutRequests,
@@ -150,7 +150,7 @@ router.get('/admin/payouts', requireAdmin, validateQuery(paginationSchema.merge(
     });
   } catch (error) {
     console.error('Get admin payouts error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -192,7 +192,7 @@ router.post('/admin/payouts/:id/approve', requireAdmin, validateBody(payoutAppro
 
     await ledgerEntry.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Payout request approved successfully',
       data: {
@@ -205,7 +205,7 @@ router.post('/admin/payouts/:id/approve', requireAdmin, validateBody(payoutAppro
     });
   } catch (error) {
     console.error('Approve payout error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -236,7 +236,7 @@ router.post('/admin/payouts/:id/reject', requireAdmin, validateBody(payoutApprov
     payoutRequest.status = 'rejected';
     await payoutRequest.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Payout request rejected',
       data: {
@@ -247,7 +247,7 @@ router.post('/admin/payouts/:id/reject', requireAdmin, validateBody(payoutApprov
     });
   } catch (error) {
     console.error('Reject payout error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
@@ -280,13 +280,13 @@ router.get('/:id', requireUser, async (req: AuthenticatedRequest, res) => {
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: payoutRequest
     });
   } catch (error) {
     console.error('Get payout request error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });

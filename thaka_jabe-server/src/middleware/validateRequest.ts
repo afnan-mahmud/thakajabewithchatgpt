@@ -9,7 +9,7 @@ export const validateRequest = (schema: ZodSchema) => {
         query: req.query,
         params: req.params,
       });
-      next();
+      return next();
     } catch (error) {
       if (error instanceof ZodError) {
         const errorMessages = error.errors.map(err => ({
@@ -36,7 +36,7 @@ export const validateBody = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       req.body = schema.parse(req.body);
-      next();
+      return next();
     } catch (error) {
       if (error instanceof ZodError) {
         const errorMessages = error.errors.map(err => ({
@@ -63,7 +63,7 @@ export const validateQuery = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       req.query = schema.parse(req.query);
-      next();
+      return next();
     } catch (error) {
       if (error instanceof ZodError) {
         const errorMessages = error.errors.map(err => ({
