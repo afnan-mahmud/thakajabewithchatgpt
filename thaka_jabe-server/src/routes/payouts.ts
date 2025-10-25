@@ -1,15 +1,15 @@
 import express from 'express';
 import { PayoutRequest, HostProfile, AccountLedger } from '../models';
-import { requireUser, requireHost, requireAdmin } from '../middleware/auth';
+import { requireUser, requireHost, requireAdmin, AuthenticatedRequest } from '../middleware/auth';
 import { payoutRequestSchema, payoutApprovalSchema, paginationSchema, statusFilterSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // @route   GET /api/payouts/mine
 // @desc    Get current user's payout requests
 // @access  Private (host)
-router.get('/mine', requireHost, validateQuery(paginationSchema.merge(statusFilterSchema)), async (req, res) => {
+router.get('/mine', requireHost, validateQuery(paginationSchema.merge(statusFilterSchema)), async (req: AuthenticatedRequest, res) => {
   try {
     const { page, limit, status } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -57,7 +57,7 @@ router.get('/mine', requireHost, validateQuery(paginationSchema.merge(statusFilt
 // @route   POST /api/payouts/request
 // @desc    Create a payout request
 // @access  Private (host)
-router.post('/request', requireHost, validateBody(payoutRequestSchema), async (req, res) => {
+router.post('/request', requireHost, validateBody(payoutRequestSchema), async (req: AuthenticatedRequest, res) => {
   try {
     // Get host profile
     const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
@@ -257,7 +257,7 @@ router.post('/admin/payouts/:id/reject', requireAdmin, validateBody(payoutApprov
 // @route   GET /api/payouts/:id
 // @desc    Get payout request details
 // @access  Private (host or admin)
-router.get('/:id', requireUser, async (req, res) => {
+router.get('/:id', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const payoutRequest = await PayoutRequest.findById(req.params.id)
       .populate('hostId', 'displayName locationName');
@@ -272,7 +272,7 @@ router.get('/:id', requireUser, async (req, res) => {
     // Check permissions
     if (req.user!.role === 'host') {
       const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
-      if (!hostProfile || payoutRequest.hostId._id.toString() !== hostProfile._id.toString()) {
+      if (!hostProfile || payoutRequest.hostId._id.toString() !== (hostProfile._id as any).toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'

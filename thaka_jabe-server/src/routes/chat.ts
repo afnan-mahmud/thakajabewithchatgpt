@@ -1,12 +1,12 @@
 import express from 'express';
 import { Message, MessageThread, Room, HostProfile, User } from '../models';
-import { requireUser } from '../middleware/auth';
+import { requireUser, AuthenticatedRequest } from '../middleware/auth';
 import { messageCreateSchema, paginationSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 import { sanitizeText } from '../utils/sanitizer';
 import admin from 'firebase-admin';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // Initialize Firebase Admin (if not already initialized)
 let db: any = null;
@@ -30,9 +30,9 @@ const initializeFirebase = () => {
     try {
       admin.initializeApp({
         credential: admin.credential.cert({
-          project_id: process.env.FIREBASE_PROJECT_ID,
-          client_email: process.env.FIREBASE_CLIENT_EMAIL,
-          private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || '',
         }),
         databaseURL: process.env.FIREBASE_DATABASE_URL
       });
@@ -62,7 +62,7 @@ const sanitizeMessage = (text: string) => {
 // @route   POST /api/chat/messages
 // @desc    Send a message
 // @access  Private
-router.post('/messages', requireUser, validateBody(messageCreateSchema), async (req, res) => {
+router.post('/messages', requireUser, validateBody(messageCreateSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { text, threadId, roomId, userId, hostId } = req.body;
 
@@ -230,7 +230,7 @@ router.post('/messages', requireUser, validateBody(messageCreateSchema), async (
 // @route   POST /api/chat/threads
 // @desc    Create a new message thread
 // @access  Private
-router.post('/threads', requireUser, async (req, res) => {
+router.post('/threads', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { roomId, userId, hostId } = req.body;
 
@@ -306,7 +306,7 @@ router.post('/threads', requireUser, async (req, res) => {
 // @route   GET /api/chat/threads/ids
 // @desc    Get thread IDs that user is allowed to access
 // @access  Private
-router.get('/threads/ids', requireUser, async (req, res) => {
+router.get('/threads/ids', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
     const userRole = req.user!.role;
@@ -328,7 +328,7 @@ router.get('/threads/ids', requireUser, async (req, res) => {
       .select('_id roomId userId hostId lastMessageAt')
       .sort({ lastMessageAt: -1 });
 
-    const threadIds = threads.map(thread => thread._id.toString());
+    const threadIds = threads.map(thread => (thread._id as any).toString());
 
     res.json({
       success: true,
@@ -336,9 +336,9 @@ router.get('/threads/ids', requireUser, async (req, res) => {
         threadIds,
         threads: threads.map(thread => ({
           id: thread._id,
-          roomId: thread.roomId.toString(),
-          userId: thread.userId.toString(),
-          hostId: thread.hostId.toString(),
+          roomId: (thread.roomId as any).toString(),
+          userId: (thread.userId as any).toString(),
+          hostId: (thread.hostId as any).toString(),
           lastMessageAt: thread.lastMessageAt
         }))
       }
@@ -355,7 +355,7 @@ router.get('/threads/ids', requireUser, async (req, res) => {
 // @route   GET /api/chat/threads
 // @desc    Get user's message threads
 // @access  Private
-router.get('/threads', requireUser, validateQuery(paginationSchema), async (req, res) => {
+router.get('/threads', requireUser, validateQuery(paginationSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { page, limit } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -413,7 +413,7 @@ router.get('/threads', requireUser, validateQuery(paginationSchema), async (req,
 // @route   GET /api/chat/threads/:id/messages
 // @desc    Get messages for a specific thread
 // @access  Private
-router.get('/threads/:id/messages', requireUser, validateQuery(paginationSchema), async (req, res) => {
+router.get('/threads/:id/messages', requireUser, validateQuery(paginationSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { page, limit } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -436,7 +436,7 @@ router.get('/threads/:id/messages', requireUser, validateQuery(paginationSchema)
 
     if (req.user!.role === 'host') {
       const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
-      if (!hostProfile || thread.hostId.toString() !== hostProfile._id.toString()) {
+      if (!hostProfile || thread.hostId.toString() !== (hostProfile._id as any).toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -475,7 +475,7 @@ router.get('/threads/:id/messages', requireUser, validateQuery(paginationSchema)
 // @route   GET /api/chat/threads/:id
 // @desc    Get thread details
 // @access  Private
-router.get('/threads/:id', requireUser, async (req, res) => {
+router.get('/threads/:id', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const thread = await MessageThread.findById(req.params.id)
       .populate('roomId', 'title images')
@@ -499,7 +499,7 @@ router.get('/threads/:id', requireUser, async (req, res) => {
 
     if (req.user!.role === 'host') {
       const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
-      if (!hostProfile || thread.hostId._id.toString() !== hostProfile._id.toString()) {
+      if (!hostProfile || thread.hostId._id.toString() !== (hostProfile._id as any).toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'

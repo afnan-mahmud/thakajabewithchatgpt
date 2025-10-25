@@ -35,7 +35,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "sharp": "^0.34.4",
-    "sslcommerz": "^1.0.2",
+    "sslcommerz": "^1.7.0",
     "sslcommerz-nodejs": "^1.0.8",
     "uuid": "^13.0.0",
     "zod": "^3.23.8"

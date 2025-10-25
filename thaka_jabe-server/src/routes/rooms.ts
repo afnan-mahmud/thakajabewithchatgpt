@@ -75,9 +75,9 @@ router.post('/', requireHost, validateBody(roomCreateSchema), async (req: Authen
   } catch (error) {
     console.error('Create room error:', error);
     console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+      message: (error as Error).message,
+      stack: (error as Error).stack,
+      name: (error as Error).name
     });
     return res.status(500).json({
       success: false,
@@ -438,8 +438,8 @@ router.get('/hosts/rooms/unavailable', requireHost, async (req: AuthenticatedReq
 
     const unavailableDates = rooms.flatMap(room => 
       room.unavailableDates.map(date => ({
-        _id: `${room._id}-${date}`,
-        roomId: room._id.toString(),
+        _id: `${(room._id as any)}-${date}`,
+        roomId: (room._id as any).toString(),
         roomTitle: room.title,
         date: date,
         createdAt: new Date().toISOString()

@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { AppError } from '../middleware/errorHandler';
-import { AuthRequest } from '../middleware/auth';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -93,7 +93,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
-export const logout = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const logout = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     // In a real application, you might want to blacklist the token
     // For now, we'll just return a success message
@@ -106,7 +106,7 @@ export const logout = async (req: AuthRequest, res: Response, next: NextFunction
   }
 };
 
-export const getProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getProfile = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const user = await User.findById(req.user!.id);
     if (!user) {

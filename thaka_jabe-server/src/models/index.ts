@@ -8,3 +8,4 @@ export { Message, IMessage } from './Message';
 export { PaymentTransaction, IPaymentTransaction } from './Payment';
 export { PayoutRequest, IPayoutRequest } from './PayoutRequest';
 export { AccountLedger, IAccountLedger } from './AccountLedger';
+export { Product, IProduct } from './Product';

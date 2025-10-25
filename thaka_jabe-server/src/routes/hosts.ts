@@ -1,15 +1,15 @@
 import express from 'express';
 import { HostProfile, User, Room, Booking, AccountLedger, PayoutRequest } from '../models';
-import { requireUser, requireHost, requireAdmin } from '../middleware/auth';
+import { requireUser, requireHost, requireAdmin, AuthenticatedRequest } from '../middleware/auth';
 import { hostApplySchema, hostApprovalSchema, paginationSchema, statusFilterSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // @route   POST /api/hosts/apply
 // @desc    Apply to become a host
 // @access  Private (any authenticated user)
-router.post('/apply', requireUser, validateBody(hostApplySchema), async (req, res) => {
+router.post('/apply', requireUser, validateBody(hostApplySchema), async (req: AuthenticatedRequest, res) => {
   try {
     // Check if user already has a host profile
     const existingProfile = await HostProfile.findOne({ userId: req.user!.id });
@@ -50,7 +50,7 @@ router.post('/apply', requireUser, validateBody(hostApplySchema), async (req, re
 // @route   GET /api/hosts/me
 // @desc    Get current user's host profile
 // @access  Private (host or admin)
-router.get('/me', requireUser, async (req, res) => {
+router.get('/me', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const hostProfile = await HostProfile.findOne({ userId: req.user!.id })
       .populate('userId', 'name email phone');
@@ -203,7 +203,7 @@ router.post('/admin/hosts/:id/reject', requireAdmin, validateBody(hostApprovalSc
 // @route   GET /api/hosts/stats
 // @desc    Get host dashboard statistics
 // @access  Private (host)
-router.get('/stats', requireHost, async (req, res) => {
+router.get('/stats', requireHost, async (req: AuthenticatedRequest, res) => {
   try {
     const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
     if (!hostProfile) {
@@ -267,7 +267,7 @@ router.get('/stats', requireHost, async (req, res) => {
 // @route   GET /api/hosts/rooms
 // @desc    Get host's rooms
 // @access  Private (host)
-router.get('/rooms', requireHost, async (req, res) => {
+router.get('/rooms', requireHost, async (req: AuthenticatedRequest, res) => {
   try {
     const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
     if (!hostProfile) {
@@ -296,7 +296,7 @@ router.get('/rooms', requireHost, async (req, res) => {
 // @route   GET /api/hosts/bookings
 // @desc    Get host's bookings
 // @access  Private (host)
-router.get('/bookings', requireHost, async (req, res) => {
+router.get('/bookings', requireHost, async (req: AuthenticatedRequest, res) => {
   try {
     const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
     if (!hostProfile) {
@@ -327,7 +327,7 @@ router.get('/bookings', requireHost, async (req, res) => {
 // @route   GET /api/hosts/balance
 // @desc    Get host balance and earnings summary
 // @access  Private (host)
-router.get('/balance', requireHost, async (req, res) => {
+router.get('/balance', requireHost, async (req: AuthenticatedRequest, res) => {
   try {
     // Get host profile
     const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
@@ -418,7 +418,7 @@ router.get('/balance', requireHost, async (req, res) => {
 // @route   GET /api/hosts/transactions
 // @desc    Get host transaction history
 // @access  Private (host)
-router.get('/transactions', requireHost, validateQuery(paginationSchema), async (req, res) => {
+router.get('/transactions', requireHost, validateQuery(paginationSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { page, limit } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -460,7 +460,7 @@ router.get('/transactions', requireHost, validateQuery(paginationSchema), async 
         _id: booking._id,
         type: 'booking',
         amount: booking.amountTk,
-        description: `Booking payment - ${booking.roomId.title}`,
+        description: `Booking payment - ${(booking.roomId as any).title}`,
         date: booking.createdAt,
         status: 'completed',
         user: booking.userId

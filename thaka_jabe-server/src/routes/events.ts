@@ -1,9 +1,9 @@
 import express from 'express';
-import { requireUser } from '../middleware/auth';
+import { requireUser, AuthenticatedRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validateRequest';
 import { z } from 'zod';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // Event schemas
 const metaEventSchema = z.object({
@@ -182,7 +182,7 @@ router.post('/tiktok', requireUser, validateBody(tiktokEventSchema), async (req,
 // @route   POST /api/events/booking-created
 // @desc    Track booking creation event (ViewContent)
 // @access  Private
-router.post('/booking-created', requireUser, async (req, res) => {
+router.post('/booking-created', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { bookingId, roomId, amount, userEmail, userName, userPhone } = req.body;
     const fbp = req.headers['x-fbp'] as string;
@@ -243,7 +243,7 @@ router.post('/booking-created', requireUser, async (req, res) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': req.headers.authorization,
+          ...(req.headers.authorization && { 'Authorization': req.headers.authorization }),
         },
         body: JSON.stringify(metaEvent),
       }),
@@ -251,7 +251,7 @@ router.post('/booking-created', requireUser, async (req, res) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': req.headers.authorization,
+          ...(req.headers.authorization && { 'Authorization': req.headers.authorization }),
         },
         body: JSON.stringify(tiktokEvent),
       }),
@@ -280,7 +280,7 @@ router.post('/booking-created', requireUser, async (req, res) => {
 // @route   POST /api/events/payment-success
 // @desc    Track payment success event (Purchase)
 // @access  Private
-router.post('/payment-success', requireUser, async (req, res) => {
+router.post('/payment-success', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { bookingId, roomId, amount, userEmail, userName, userPhone } = req.body;
     const fbp = req.headers['x-fbp'] as string;
@@ -341,7 +341,7 @@ router.post('/payment-success', requireUser, async (req, res) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': req.headers.authorization,
+          ...(req.headers.authorization && { 'Authorization': req.headers.authorization }),
         },
         body: JSON.stringify(metaEvent),
       }),
@@ -349,7 +349,7 @@ router.post('/payment-success', requireUser, async (req, res) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': req.headers.authorization,
+          ...(req.headers.authorization && { 'Authorization': req.headers.authorization }),
         },
         body: JSON.stringify(tiktokEvent),
       }),

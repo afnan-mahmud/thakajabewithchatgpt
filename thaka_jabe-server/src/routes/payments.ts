@@ -1,12 +1,12 @@
 import express from 'express';
 import { Booking, PaymentTransaction, AccountLedger, Room, User } from '../models';
-import { requireUser } from '../middleware/auth';
+import { requireUser, AuthenticatedRequest } from '../middleware/auth';
 import { paymentInitSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 import { hasOverlap } from '../utils/bookingUtils';
 const sslcommerz = require('sslcommerz-nodejs');
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // SSLCOMMERZ configuration
 const sslcommerzConfig = {
@@ -18,7 +18,7 @@ const sslcommerzConfig = {
 // @route   POST /api/payments/ssl/init
 // @desc    Initialize SSLCOMMERZ payment with comprehensive validation
 // @access  Private
-router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (req, res) => {
+router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { bookingId } = req.body;
     
@@ -65,8 +65,8 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
     }
 
     // Verify room status
-    if (booking.roomId.status !== 'approved') {
-      console.log(`[PAYMENT_INIT] Room not approved: ${booking.roomId.status} for booking: ${bookingId}`);
+    if ((booking.roomId as any).status !== 'approved') {
+      console.log(`[PAYMENT_INIT] Room not approved: ${(booking.roomId as any).status} for booking: ${bookingId}`);
       return res.status(400).json({
         success: false,
         message: 'Room is not available for booking'
@@ -92,7 +92,7 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
     const checkInDate = new Date(booking.checkIn);
     const checkOutDate = new Date(booking.checkOut);
     const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
-    const totalAmount = booking.roomId.totalPriceTk * nights;
+    const totalAmount = (booking.roomId as any).totalPriceTk * nights;
 
     console.log(`[PAYMENT_INIT] Calculated amount: ${totalAmount} Tk for ${nights} nights`);
 
@@ -111,24 +111,24 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
     const paymentData = {
       total_amount: totalAmount,
       currency: 'BDT',
-      tran_id: paymentTransaction._id.toString(),
+      tran_id: (paymentTransaction._id as any).toString(),
       success_url: `${process.env.FRONTEND_URL}/payment/success`,
       fail_url: `${process.env.FRONTEND_URL}/payment/fail`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
       ipn_url: `${process.env.BACKEND_URL}/api/payments/ssl/ipn`,
       multi_card_name: 'brac_visa,mastercard,amex,dbbl_nexus',
-      product_name: `Room Booking - ${booking.roomId.title}`,
+      product_name: `Room Booking - ${(booking.roomId as any).title}`,
       product_category: 'Accommodation',
       product_profile: 'general',
-      cus_name: booking.userId.name,
-      cus_email: booking.userId.email,
-      cus_phone: booking.userId.phone,
+      cus_name: (booking.userId as any).name,
+      cus_email: (booking.userId as any).email,
+      cus_phone: (booking.userId as any).phone,
       cus_add1: 'Dhaka',
       cus_city: 'Dhaka',
       cus_country: 'Bangladesh',
-      value_a: booking._id.toString(),
-      value_b: booking.userId._id.toString(),
-      value_c: booking.hostId._id.toString(),
+      value_a: (booking._id as any).toString(),
+      value_b: (booking.userId as any)._id.toString(),
+      value_c: (booking.hostId as any)._id.toString(),
       value_d: totalAmount.toString()
     };
 
@@ -229,9 +229,9 @@ router.get('/ssl/success', async (req, res) => {
               bookingId: booking._id,
               roomId: booking.roomId._id,
               amount: booking.amountTk,
-              userEmail: booking.userId?.email || '',
-              userName: booking.userId?.name || '',
-              userPhone: booking.userId?.phone || '',
+              userEmail: (booking.userId as any)?.email || '',
+              userName: (booking.userId as any)?.name || '',
+              userPhone: (booking.userId as any)?.phone || '',
             }),
           });
           

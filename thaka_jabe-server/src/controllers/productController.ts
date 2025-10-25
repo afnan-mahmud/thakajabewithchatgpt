@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Product } from '../models/Product';
+import { Product } from '../models';
 import { AppError } from '../middleware/errorHandler';
 
 export const getProducts = async (req: Request, res: Response, next: NextFunction) => {

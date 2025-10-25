@@ -49,7 +49,7 @@ const loadEnvFiles = () => {
 
 loadEnvFiles();
 
-const app = express();
+const app: express.Application = express();
 const PORT = process.env.PORT || 8080;
 
 // Security middleware

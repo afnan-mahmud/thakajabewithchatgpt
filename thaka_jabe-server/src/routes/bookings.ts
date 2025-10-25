@@ -1,11 +1,11 @@
 import express from 'express';
-import { Booking, Room, HostProfile, User } from '../models';
-import { requireUser, requireHost, requireAdmin } from '../middleware/auth';
+import { Booking, Room, HostProfile, User, AccountLedger } from '../models';
+import { requireUser, requireHost, requireAdmin, AuthenticatedRequest } from '../middleware/auth';
 import { bookingQuoteSchema, bookingCreateSchema, bookingApprovalSchema, paginationSchema, statusFilterSchema, dateRangeSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 import { checkBookingOverlap, hasOverlap } from '../utils/bookingUtils';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // @route   POST /api/bookings/quote
 // @desc    Get booking quote and check availability
@@ -77,7 +77,7 @@ router.post('/quote', validateBody(bookingQuoteSchema), async (req, res) => {
 // @route   POST /api/bookings/create
 // @desc    Create a new booking
 // @access  Private
-router.post('/create', requireUser, validateBody(bookingCreateSchema), async (req, res) => {
+router.post('/create', requireUser, validateBody(bookingCreateSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { roomId, checkIn, checkOut, guests, mode } = req.body;
 
@@ -143,9 +143,9 @@ router.post('/create', requireUser, validateBody(bookingCreateSchema), async (re
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': req.headers.authorization,
-          'x-fbp': req.headers['x-fbp'] as string || '',
-          'x-fbc': req.headers['x-fbc'] as string || '',
+          ...(req.headers.authorization && { 'Authorization': req.headers.authorization }),
+          ...(req.headers['x-fbp'] && { 'x-fbp': req.headers['x-fbp'] as string }),
+          ...(req.headers['x-fbc'] && { 'x-fbc': req.headers['x-fbc'] as string }),
         },
         body: JSON.stringify({
           bookingId: booking._id,
@@ -200,7 +200,7 @@ router.post('/create', requireUser, validateBody(bookingCreateSchema), async (re
 // @route   GET /api/bookings/mine
 // @desc    Get current user's bookings
 // @access  Private
-router.get('/mine', requireUser, validateQuery(paginationSchema.merge(statusFilterSchema)), async (req, res) => {
+router.get('/mine', requireUser, validateQuery(paginationSchema.merge(statusFilterSchema)), async (req: AuthenticatedRequest, res) => {
   try {
     const { page, limit, status } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -241,7 +241,7 @@ router.get('/mine', requireUser, validateQuery(paginationSchema.merge(statusFilt
 // @route   GET /api/host/bookings
 // @desc    Get host's bookings
 // @access  Private (host)
-router.get('/host/bookings', requireHost, validateQuery(paginationSchema.merge(statusFilterSchema)), async (req, res) => {
+router.get('/host/bookings', requireHost, validateQuery(paginationSchema.merge(statusFilterSchema)), async (req: AuthenticatedRequest, res) => {
   try {
     const { page, limit, status } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -291,7 +291,7 @@ router.get('/host/bookings', requireHost, validateQuery(paginationSchema.merge(s
 // @route   POST /api/bookings/:id/approve
 // @desc    Approve booking (host or admin)
 // @access  Private (host or admin)
-router.post('/:id/approve', requireUser, validateBody(bookingApprovalSchema), async (req, res) => {
+router.post('/:id/approve', requireUser, validateBody(bookingApprovalSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
@@ -304,7 +304,7 @@ router.post('/:id/approve', requireUser, validateBody(bookingApprovalSchema), as
     // Check permissions
     if (req.user!.role === 'host') {
       const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
-      if (!hostProfile || booking.hostId.toString() !== hostProfile._id.toString()) {
+      if (!hostProfile || booking.hostId.toString() !== (hostProfile._id as any).toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -336,7 +336,7 @@ router.post('/:id/approve', requireUser, validateBody(bookingApprovalSchema), as
 // @route   POST /api/bookings/:id/reject
 // @desc    Reject booking (host or admin)
 // @access  Private (host or admin)
-router.post('/:id/reject', requireUser, validateBody(bookingApprovalSchema), async (req, res) => {
+router.post('/:id/reject', requireUser, validateBody(bookingApprovalSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
@@ -349,7 +349,7 @@ router.post('/:id/reject', requireUser, validateBody(bookingApprovalSchema), asy
     // Check permissions
     if (req.user!.role === 'host') {
       const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
-      if (!hostProfile || booking.hostId.toString() !== hostProfile._id.toString()) {
+      if (!hostProfile || booking.hostId.toString() !== (hostProfile._id as any).toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -381,7 +381,7 @@ router.post('/:id/reject', requireUser, validateBody(bookingApprovalSchema), asy
 // @route   PUT /api/bookings/:id
 // @desc    Update booking status
 // @access  Private (host or admin)
-router.put('/:id', requireUser, async (req, res) => {
+router.put('/:id', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { status } = req.body;
     const booking = await Booking.findById(req.params.id);
@@ -395,7 +395,7 @@ router.put('/:id', requireUser, async (req, res) => {
     // Check permissions
     if (req.user!.role === 'host') {
       const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
-      if (!hostProfile || booking.hostId.toString() !== hostProfile._id.toString()) {
+      if (!hostProfile || booking.hostId.toString() !== (hostProfile._id as any).toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'
@@ -431,7 +431,7 @@ router.put('/:id', requireUser, async (req, res) => {
 // @route   POST /api/bookings/:id/cancel
 // @desc    Cancel booking with refund logic
 // @access  Private (user)
-router.post('/:id/cancel', requireUser, async (req, res) => {
+router.post('/:id/cancel', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const booking = await Booking.findById(req.params.id).populate('roomId');
     if (!booking) {

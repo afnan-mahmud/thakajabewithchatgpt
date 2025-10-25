@@ -1,15 +1,15 @@
 import express from 'express';
 import { Message, MessageThread, Room, User, HostProfile } from '../models';
-import { requireUser, requireHost, requireAdmin } from '../middleware/auth';
+import { requireUser, requireHost, requireAdmin, AuthenticatedRequest } from '../middleware/auth';
 import { paginationSchema } from '../schemas';
 import { validateQuery } from '../middleware/validateRequest';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // @route   GET /api/messages/threads
 // @desc    Get message threads for host
 // @access  Private (host)
-router.get('/threads', requireHost, validateQuery(paginationSchema), async (req, res) => {
+router.get('/threads', requireHost, validateQuery(paginationSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { page, limit } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -42,15 +42,15 @@ router.get('/threads', requireHost, validateQuery(paginationSchema), async (req,
         return {
           _id: thread._id,
           roomId: {
-            _id: thread.roomId._id,
-            title: thread.roomId.title,
-            images: thread.roomId.images
+            _id: (thread.roomId as any)._id,
+            title: (thread.roomId as any).title,
+            images: (thread.roomId as any).images
           },
           userId: {
-            _id: thread.userId._id,
-            name: thread.userId.name,
-            email: thread.userId.email,
-            phone: thread.userId.phone
+            _id: (thread.userId as any)._id,
+            name: (thread.userId as any).name,
+            email: (thread.userId as any).email,
+            phone: (thread.userId as any).phone
           },
           lastMessageAt: thread.lastMessageAt,
           messageCount,
@@ -92,7 +92,7 @@ router.get('/threads', requireHost, validateQuery(paginationSchema), async (req,
 // @route   GET /api/messages/threads/:threadId
 // @desc    Get messages for a specific thread
 // @access  Private (host)
-router.get('/threads/:threadId', requireHost, validateQuery(paginationSchema), async (req, res) => {
+router.get('/threads/:threadId', requireHost, validateQuery(paginationSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { threadId } = req.params;
     const { page, limit } = req.query;
@@ -151,7 +151,7 @@ router.get('/threads/:threadId', requireHost, validateQuery(paginationSchema), a
 // @route   POST /api/messages/threads/:threadId
 // @desc    Send a message in a thread
 // @access  Private (host)
-router.post('/threads/:threadId', requireHost, async (req, res) => {
+router.post('/threads/:threadId', requireHost, async (req: AuthenticatedRequest, res) => {
   try {
     const { threadId } = req.params;
     const { text } = req.body;
@@ -221,7 +221,7 @@ router.post('/threads/:threadId', requireHost, async (req, res) => {
 // @route   POST /api/messages/threads
 // @desc    Create a new message thread
 // @access  Private (host)
-router.post('/threads', requireHost, async (req, res) => {
+router.post('/threads', requireHost, async (req: AuthenticatedRequest, res) => {
   try {
     const { roomId, userId } = req.body;
 
@@ -270,15 +270,15 @@ router.post('/threads', requireHost, async (req, res) => {
       data: {
         _id: thread._id,
         roomId: {
-          _id: thread.roomId._id,
-          title: thread.roomId.title,
-          images: thread.roomId.images
+          _id: (thread.roomId as any)._id,
+          title: (thread.roomId as any).title,
+          images: (thread.roomId as any).images
         },
         userId: {
-          _id: thread.userId._id,
-          name: thread.userId.name,
-          email: thread.userId.email,
-          phone: thread.userId.phone
+          _id: (thread.userId as any)._id,
+          name: (thread.userId as any).name,
+          email: (thread.userId as any).email,
+          phone: (thread.userId as any).phone
         },
         lastMessageAt: thread.lastMessageAt,
         messageCount: 0,

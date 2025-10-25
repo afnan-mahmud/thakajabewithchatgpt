@@ -57,7 +57,7 @@ dependencies:
     specifier: ^0.34.4
     version: 0.34.4
   sslcommerz:
-    specifier: ^1.0.2
+    specifier: ^1.7.0
     version: 1.7.0
   sslcommerz-nodejs:
     specifier: ^1.0.8

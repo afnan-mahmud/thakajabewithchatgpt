@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/User';
 import { AppError } from '../middleware/errorHandler';
-import { AuthRequest } from '../middleware/auth';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -50,7 +50,7 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const updateUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updateUser = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const updates = req.body;

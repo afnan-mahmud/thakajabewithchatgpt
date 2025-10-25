@@ -5,7 +5,7 @@ import { User, HostProfile } from '../models';
 import { registerSchema, loginSchema } from '../schemas';
 import { validateBody } from '../middleware/validateRequest';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // @route   POST /api/auth/register
 // @desc    Register a new user (optionally as host)

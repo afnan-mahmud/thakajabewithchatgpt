@@ -36,7 +36,7 @@ export const requireUser = async (req: AuthenticatedRequest, res: Response, next
     }
 
     req.user = {
-      id: user._id.toString(),
+      id: (user._id as any).toString(),
       email: user.email,
       role: user.role,
       name: user.name,

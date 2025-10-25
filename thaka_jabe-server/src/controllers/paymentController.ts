@@ -1,22 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
-import SSLCommerz from 'sslcommerz-node';
-import { Payment } from '../models/Payment';
+const SSLCommerz = require('sslcommerz');
+import { PaymentTransaction } from '../models';
 import { AppError } from '../middleware/errorHandler';
-import { AuthRequest } from '../middleware/auth';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 // Initialize SSLCommerz
-const sslcommerz = new SSLCommerz(
-  process.env.SSL_STORE_ID!,
-  process.env.SSL_STORE_PASSWD!,
-  process.env.NODE_ENV === 'production' ? false : true // sandbox mode for development
-);
+const sslcommerz = SSLCommerz({
+  store_id: process.env.SSL_STORE_ID!,
+  store_passwd: process.env.SSL_STORE_PASSWD!,
+  is_sandbox: process.env.NODE_ENV !== 'production' // sandbox mode for development
+});
 
-export const createPayment = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const createPayment = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { amount, currency, orderId, products } = req.body;
 
     // Create payment record
-    const payment = await Payment.create({
+    const payment = await PaymentTransaction.create({
       userId: req.user!.id,
       orderId,
       amount,
@@ -30,7 +30,7 @@ export const createPayment = async (req: AuthRequest, res: Response, next: NextF
     const data = {
       total_amount: amount,
       currency: currency,
-      tran_id: payment._id.toString(),
+      tran_id: (payment._id as any).toString(),
       success_url: process.env.SSL_SUCCESS_URL!,
       fail_url: process.env.SSL_FAIL_URL!,
       cancel_url: process.env.SSL_CANCEL_URL!,
@@ -88,7 +88,7 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
 
     if (verification.status === 'VALID') {
       // Update payment status
-      await Payment.findByIdAndUpdate(tran_id, {
+      await PaymentTransaction.findByIdAndUpdate(tran_id, {
         status: 'completed',
         transactionId: verification.tran_id,
         paymentDetails: verification
@@ -101,7 +101,7 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
       });
     } else {
       // Update payment status as failed
-      await Payment.findByIdAndUpdate(tran_id, {
+      await PaymentTransaction.findByIdAndUpdate(tran_id, {
         status: 'failed',
         paymentDetails: verification
       });
@@ -123,14 +123,14 @@ export const handleSSLIPN = async (req: Request, res: Response, next: NextFuncti
     const { tran_id, val_id, status, amount, store_amount, currency, bank_tran_id } = req.body;
 
     if (status === 'VALID') {
-      await Payment.findByIdAndUpdate(tran_id, {
+      await PaymentTransaction.findByIdAndUpdate(tran_id, {
         status: 'completed',
         transactionId: val_id,
         bankTransactionId: bank_tran_id,
         paymentDetails: req.body
       });
     } else {
-      await Payment.findByIdAndUpdate(tran_id, {
+      await PaymentTransaction.findByIdAndUpdate(tran_id, {
         status: 'failed',
         paymentDetails: req.body
       });
@@ -142,11 +142,11 @@ export const handleSSLIPN = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-export const getPaymentStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getPaymentStatus = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { transactionId } = req.params;
 
-    const payment = await Payment.findOne({
+    const payment = await PaymentTransaction.findOne({
       _id: transactionId,
       userId: req.user!.id
     });

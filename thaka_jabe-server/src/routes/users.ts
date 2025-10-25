@@ -1,13 +1,12 @@
 import express from 'express';
 import { User } from '../models';
-import { requireUser } from '../middleware/auth';
+import { requireUser, AuthenticatedRequest } from '../middleware/auth';
 
-const router = express.Router();
-
+const router: express.Router = express.Router();
 // @route   GET /api/users/me
 // @desc    Get current user profile
 // @access  Private
-router.get('/me', requireUser, async (req, res) => {
+router.get('/me', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const user = await User.findById(req.user!.id).select('-passwordHash');
     
@@ -42,7 +41,7 @@ router.get('/me', requireUser, async (req, res) => {
 // @route   PUT /api/users/me
 // @desc    Update current user profile
 // @access  Private
-router.put('/me', requireUser, async (req, res) => {
+router.put('/me', requireUser, async (req: AuthenticatedRequest, res) => {
   try {
     const { name, phone } = req.body;
     

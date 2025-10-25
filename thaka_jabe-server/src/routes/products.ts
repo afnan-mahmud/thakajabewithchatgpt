@@ -7,11 +7,10 @@ import {
   updateProduct, 
   deleteProduct 
 } from '../controllers/productController';
-import { authenticate, authorize } from '../middleware/auth';
+import { requireUser, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validateRequest';
 
-const router = express.Router();
-
+const router: express.Router = express.Router();
 // Validation rules
 const createProductValidation = [
   body('name').trim().isLength({ min: 2 }).withMessage('Product name must be at least 2 characters long'),
@@ -39,8 +38,8 @@ const getProductsValidation = [
 // Routes
 router.get('/', getProductsValidation, validateRequest, getProducts);
 router.get('/:id', getProductById);
-router.post('/', authenticate, authorize('admin', 'seller'), createProductValidation, validateRequest, createProduct);
-router.put('/:id', authenticate, authorize('admin', 'seller'), updateProductValidation, validateRequest, updateProduct);
-router.delete('/:id', authenticate, authorize('admin'), deleteProduct);
+router.post('/', requireUser, requireRole(['admin']), createProductValidation, validateRequest, createProduct);
+router.put('/:id', requireUser, requireRole(['admin']), updateProductValidation, validateRequest, updateProduct);
+router.delete('/:id', requireUser, requireRole(['admin']), deleteProduct);
 
 export default router;

@@ -4,7 +4,7 @@ import { requireAdmin, AuthenticatedRequest } from '../middleware/auth';
 import { hostApprovalSchema, roomApprovalSchema, paginationSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // @route   GET /api/admin/stats
 // @desc    Get admin dashboard statistics

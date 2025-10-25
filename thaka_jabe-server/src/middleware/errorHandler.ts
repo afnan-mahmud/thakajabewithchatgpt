@@ -1,8 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 
-export interface AppError extends Error {
+export class AppError extends Error {
   statusCode?: number;
   isOperational?: boolean;
+
+  constructor(message: string, statusCode: number = 500) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+    
+    Error.captureStackTrace(this, this.constructor);
+  }
 }
 
 export const errorHandler = (

@@ -5,7 +5,7 @@ import { requireAdmin } from '../middleware/auth';
 import { accountSummarySchema, accountSpendSchema, dateRangeSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // @route   GET /api/accounts/summary
 // @desc    Get financial summary (admin only)
