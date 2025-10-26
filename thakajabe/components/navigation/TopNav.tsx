@@ -2,18 +2,11 @@
 
 import Link from 'next/link';
 import { UserMenu } from './UserMenu';
+import { useAuth } from '@/lib/auth-context';
 
-interface TopNavProps {
-  isAuthenticated?: boolean;
-  userRole?: 'admin' | 'host' | 'guest';
-  userName?: string;
-}
-
-export function TopNav({ 
-  isAuthenticated = false, 
-  userRole = 'guest',
-  userName 
-}: TopNavProps) {
+export function TopNav() {
+  const { isAuthenticated, user } = useAuth();
+  
   return (
     <header className="hidden md:block sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
       <div className="container h-14 flex items-center justify-between">
@@ -38,8 +31,7 @@ export function TopNav({
           {/* User Menu */}
           <UserMenu 
             isAuthenticated={isAuthenticated}
-            userRole={userRole}
-            userName={userName}
+            userRole={user?.role}
           />
         </div>
       </div>

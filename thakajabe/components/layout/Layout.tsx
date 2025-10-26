@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { BottomNav } from './BottomNav';
-import { ProfileMenu } from './ProfileMenu';
+import { BottomNav } from '@/components/navigation/BottomNav';
 import { PixelProvider } from '@/lib/pixels';
 
 interface LayoutProps {
@@ -21,7 +20,6 @@ export function Layout({ children }: LayoutProps) {
         {children}
       </main>
       <BottomNav />
-      <ProfileMenu />
     </div>
   );
 }

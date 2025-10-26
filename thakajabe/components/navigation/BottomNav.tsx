@@ -2,29 +2,30 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarCheck, MessageSquare, Phone, User, UserRound } from 'lucide-react';
-import { UserMenu } from './UserMenu';
+import { Home, CalendarCheck, MessageSquare, Phone, User, UserRound, LogOut, Settings, UserCheck, FileText, RefreshCw, Info, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/auth-context';
+import { signOut } from 'next-auth/react';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const HIDDEN_ROUTES = ['/join-host', '/host', '/admin'];
 
-interface BottomNavProps {
-  isAuthenticated?: boolean;
-  userRole?: 'admin' | 'host' | 'guest';
-  userName?: string;
-}
-
-export function BottomNav({ 
-  isAuthenticated = false, 
-  userRole = 'guest',
-  userName 
-}: BottomNavProps) {
+export function BottomNav() {
   const pathname = usePathname();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   useEffect(() => {
     // Mark as client-side rendered
@@ -104,8 +105,8 @@ export function BottomNav({
     },
   ];
 
-  // Don't render anything on desktop or during SSR
-  if (!isClient || !isMobile) {
+  // Don't render anything on desktop or during SSR or while loading auth
+  if (!isClient || !isMobile || isLoading) {
     return null;
   }
 
@@ -154,20 +155,106 @@ export function BottomNav({
               <span className="text-xs font-medium">Login</span>
             </Link>
           ) : (
-            <UserMenu
-              isAuthenticated={isAuthenticated}
-              userRole={userRole}
-              userName={userName}
-              triggerIcon={
-                <UserRound className={cn(
-                  "h-5 w-5 mb-1",
-                  pathname.startsWith('/admin') || pathname.startsWith('/host') || pathname.startsWith('/bookings') 
-                    ? "text-brand" 
-                    : "text-gray-600"
-                )} />
-              }
-              triggerClassName="flex flex-col items-center justify-center p-0 h-auto hover:bg-transparent"
-            />
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetTrigger asChild>
+                <button className="flex flex-col items-center justify-center">
+                  <UserRound className={cn(
+                    "h-5 w-5 mb-1",
+                    pathname.startsWith('/admin') || pathname.startsWith('/host') || pathname.startsWith('/bookings') 
+                      ? "text-brand" 
+                      : "text-gray-600"
+                  )} />
+                  <span className="text-xs font-medium">More</span>
+                </button>
+              </SheetTrigger>
+              
+              <SheetContent side="right" className="w-80 sm:w-96">
+                <SheetHeader>
+                  <SheetTitle className="sr-only">User Menu</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-6">
+                  {/* User Profile Header */}
+                  <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src="" alt={user?.name || ''} />
+                      <AvatarFallback className="bg-brand text-white text-lg font-semibold">
+                        {user?.name ? user.name.charAt(0).toUpperCase() : 'G'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {user?.name || 'Guest'}
+                      </p>
+                      <p className="text-sm text-gray-500 capitalize">
+                        {user?.role || 'Guest'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="space-y-1">
+                    <Link
+                      href="/account"
+                      onClick={() => setIsSheetOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <Settings className="h-5 w-5 text-gray-400" />
+                      <span>Profile Settings</span>
+                    </Link>
+                    
+                    <Link
+                      href="/join-host"
+                      onClick={() => setIsSheetOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <UserCheck className="h-5 w-5 text-gray-400" />
+                      <span>Switch to Hosting</span>
+                    </Link>
+                    
+                    <Link
+                      href="/terms"
+                      onClick={() => setIsSheetOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <FileText className="h-5 w-5 text-gray-400" />
+                      <span>Terms & Conditions</span>
+                    </Link>
+                    
+                    <Link
+                      href="/refund-policy"
+                      onClick={() => setIsSheetOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <RefreshCw className="h-5 w-5 text-gray-400" />
+                      <span>Refund Policy</span>
+                    </Link>
+                    
+                    <Link
+                      href="/about"
+                      onClick={() => setIsSheetOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <Info className="h-5 w-5 text-gray-400" />
+                      <span>About Us</span>
+                    </Link>
+                  </div>
+
+                  {/* Logout Button */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={async () => {
+                        setIsSheetOpen(false);
+                        await signOut({ callbackUrl: '/' });
+                      }}
+                      className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           )}
         </div>
       </div>

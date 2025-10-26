@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,45 +12,45 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, User, UserPlus, LogIn, LogOut, LayoutDashboard } from 'lucide-react';
+import { MoreHorizontal, User, UserPlus, LogIn, LogOut, Calendar, MessageSquare, Repeat, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface UserMenuProps {
   isAuthenticated?: boolean;
   userRole?: 'admin' | 'host' | 'guest';
-  userName?: string;
   className?: string;
   triggerIcon?: React.ReactNode;
   triggerClassName?: string;
 }
 
 export function UserMenu({ 
-  isAuthenticated = false, 
-  userRole = 'guest',
-  userName,
+  isAuthenticated: propIsAuthenticated, 
+  userRole: propUserRole,
   className,
   triggerIcon,
   triggerClassName 
 }: UserMenuProps) {
   const router = useRouter();
+  const { isAuthenticated: authIsAuthenticated, user } = useAuth();
+  
+  // Use hook data with props as fallback
+  const isAuthenticated = authIsAuthenticated || propIsAuthenticated;
+  const userRole = user?.role || propUserRole || 'guest';
 
   const handleLogout = async () => {
-    // TODO: Implement actual logout with NextAuth
-    // await signOut();
-    console.log('Logout clicked');
-    // For now, just redirect to home
-    router.push('/');
+    try {
+      await signOut({ callbackUrl: '/' });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: redirect to home
+      router.push('/');
+    }
   };
 
   const getDashboardPath = () => {
-    switch (userRole) {
-      case 'admin':
-        return '/admin';
-      case 'host':
-        return '/host';
-      default:
-        return '/bookings';
-    }
+    if (userRole === 'admin') return '/admin';
+    if (userRole === 'host') return '/host';
+    return '/bookings';
   };
 
   return (
@@ -86,17 +87,53 @@ export function UserMenu({
           </>
         ) : (
           <>
-            <DropdownMenuItem asChild>
-              <Link href={getDashboardPath()} className="flex items-center">
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Dashboard
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </DropdownMenuItem>
+            {userRole === 'admin' || userRole === 'host' ? (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link href={getDashboardPath()} className="flex items-center">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link href="/bookings" className="flex items-center">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Bookings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/messages" className="flex items-center">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Messages
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account" className="flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/join-host" className="flex items-center">
+                    <Repeat className="mr-2 h-4 w-4" />
+                    Switch to Hosting
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </>
+            )}
           </>
         )}
       </DropdownMenuContent>

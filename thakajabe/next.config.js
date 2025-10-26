@@ -5,6 +5,7 @@ const nextConfig = {
       // Cloudflare R2 patterns
       { protocol: 'https', hostname: '*.r2.cloudflarestorage.com', pathname: '/**' },
       { protocol: 'https', hostname: 'thakajabeimageupload.66d3c416fc214c7311529358cd07aece.r2.cloudflarestorage.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'pub-e27919ef384b048ba21552ec832bcff1.r2.dev', pathname: '/**' },
       // Custom domain for R2 (if configured)
       { protocol: 'https', hostname: 'images.thakajabe.com', pathname: '/**' },
       // Production domains
