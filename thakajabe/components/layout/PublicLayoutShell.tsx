@@ -7,6 +7,8 @@ import MobileHeaderBar from '@/components/navigation/MobileHeaderBar';
 import { Footer } from '@/components/layout/Footer';
 
 const HIDE_SEARCH_PATHS = ['/room', '/search'];
+const HIDE_ALL_NAV_MOBILE_PATHS = ['/room/'];
+const HIDE_ALL_NAV_PATHS = ['/booking/details', '/booking/success', '/booking/failed'];
 
 interface PublicLayoutShellProps {
   children: React.ReactNode;
@@ -17,16 +19,37 @@ export function PublicLayoutShell({
 }: PublicLayoutShellProps) {
   const pathname = usePathname();
   const hideSearch = HIDE_SEARCH_PATHS.some(path => pathname.startsWith(path));
+  const hideAllNavOnMobile = HIDE_ALL_NAV_MOBILE_PATHS.some(path => pathname.startsWith(path));
+  const hideAllNav = HIDE_ALL_NAV_PATHS.some(path => pathname.startsWith(path));
 
   return (
     <>
-      <TopNav />
-      {!hideSearch && <MobileHeaderBar />}
-      <main className="min-h-screen pb-20 md:pb-0">
+      {/* Desktop TopNav - hide on booking pages */}
+      {!hideAllNav && (
+        <div className="hidden md:block">
+          <TopNav />
+        </div>
+      )}
+      
+      {/* Mobile TopNav and HeaderBar - hide on room details and booking pages */}
+      {!hideAllNavOnMobile && !hideAllNav && (
+        <>
+          <div className="md:hidden">
+            <TopNav />
+          </div>
+          {!hideSearch && <MobileHeaderBar />}
+        </>
+      )}
+      
+      <main className={`min-h-screen ${hideAllNavOnMobile || hideAllNav ? 'pb-0 md:pb-0' : 'pb-20 md:pb-0'}`}>
         {children}
       </main>
-      <Footer />
-      <BottomNav />
+      
+      {/* Footer - hide on booking pages (all) and only on desktop for booking details */}
+      {!hideAllNav && <Footer />}
+      
+      {/* BottomNav - hide on mobile for room details and booking pages */}
+      {!hideAllNavOnMobile && !hideAllNav && <BottomNav />}
     </>
   );
 }

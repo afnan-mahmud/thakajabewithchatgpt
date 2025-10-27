@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -21,6 +22,7 @@ interface SearchRoomCardProps {
 }
 
 export function SearchRoomCard({ room }: SearchRoomCardProps) {
+  const searchParams = useSearchParams();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const images = room.images.length > 0 ? room.images : [{ url: '/placeholder-room.jpg', w: 400, h: 300 }];
 
@@ -38,8 +40,25 @@ export function SearchRoomCard({ room }: SearchRoomCardProps) {
 
   const hasReviews = room.totalReviews && room.totalReviews > 0;
 
+  // Build room URL with date parameters if they exist
+  const getRoomUrl = () => {
+    const checkIn = searchParams.get('checkIn');
+    const checkOut = searchParams.get('checkOut');
+    const adults = searchParams.get('adults');
+    const children = searchParams.get('children');
+    
+    const params = new URLSearchParams();
+    if (checkIn) params.append('checkIn', checkIn);
+    if (checkOut) params.append('checkOut', checkOut);
+    if (adults) params.append('adults', adults);
+    if (children) params.append('children', children);
+    
+    const queryString = params.toString();
+    return `/room/${room._id}${queryString ? `?${queryString}` : ''}`;
+  };
+
   return (
-    <Link href={`/room/${room._id}`} className="group block">
+    <Link href={getRoomUrl()} className="group block">
       <div className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
         {/* Image Carousel */}
         <div className="relative aspect-[4/3] overflow-hidden">

@@ -112,9 +112,9 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
       total_amount: totalAmount,
       currency: 'BDT',
       tran_id: (paymentTransaction._id as any).toString(),
-      success_url: `${process.env.FRONTEND_URL}/payment/success`,
-      fail_url: `${process.env.FRONTEND_URL}/payment/fail`,
-      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+      success_url: `${process.env.BACKEND_URL}/api/payments/ssl/success`,
+      fail_url: `${process.env.BACKEND_URL}/api/payments/ssl/fail`,
+      cancel_url: `${process.env.BACKEND_URL}/api/payments/ssl/cancel`,
       ipn_url: `${process.env.BACKEND_URL}/api/payments/ssl/ipn`,
       multi_card_name: 'brac_visa,mastercard,amex,dbbl_nexus',
       product_name: `Room Booking - ${(booking.roomId as any).title}`,
@@ -256,7 +256,7 @@ router.get('/ssl/success', async (req, res) => {
           console.log(`[PAYMENT_SUCCESS] Commission ledger entry created: ${commissionAmount} Tk`);
         }
 
-        return res.redirect(`${process.env.FRONTEND_URL}/payment/success?bookingId=${booking._id}`);
+        return res.redirect(`${process.env.FRONTEND_URL}/booking/success?bookingId=${booking._id}&transactionId=${val_id}`);
       } else {
         console.error(`[PAYMENT_SUCCESS] Booking not found: ${paymentTransaction.bookingId}`);
         return res.redirect(`${process.env.FRONTEND_URL}/payment/fail?error=booking_not_found`);
@@ -291,7 +291,7 @@ router.get('/ssl/fail', async (req, res) => {
       }
     }
 
-    res.redirect(`${process.env.FRONTEND_URL}/payment/fail?error=${error || 'payment_failed'}`);
+    res.redirect(`${process.env.FRONTEND_URL}/booking/failed?error=${error || 'payment_failed'}&bookingId=${tran_id || ''}`);
   } catch (error) {
     console.error('[PAYMENT_FAIL] Error:', error);
     res.redirect(`${process.env.FRONTEND_URL}/payment/fail?error=server_error`);
@@ -318,7 +318,7 @@ router.get('/ssl/cancel', async (req, res) => {
       }
     }
 
-    res.redirect(`${process.env.FRONTEND_URL}/payment/cancel`);
+    res.redirect(`${process.env.FRONTEND_URL}/booking/failed?status=cancelled&bookingId=${tran_id || ''}`);
   } catch (error) {
     console.error('[PAYMENT_CANCEL] Error:', error);
     res.redirect(`${process.env.FRONTEND_URL}/payment/cancel?error=server_error`);
