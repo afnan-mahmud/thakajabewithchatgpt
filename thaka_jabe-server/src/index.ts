@@ -22,6 +22,8 @@ import uploadRoutes from './routes/uploads';
 import eventRoutes from './routes/events';
 import adminRoutes from './routes/admin';
 import messageRoutes from './routes/messages';
+import reviewRoutes from './routes/reviews';
+import locationRoutes from './routes/locations';
 
 // Load environment variables
 const loadEnvFiles = () => {
@@ -121,6 +123,8 @@ app.use('/api/uploads', uploadRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/locations', locationRoutes);
 
 // Error handling middleware
 app.use(notFound);

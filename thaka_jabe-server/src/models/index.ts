@@ -9,3 +9,4 @@ export { PaymentTransaction, IPaymentTransaction } from './Payment';
 export { PayoutRequest, IPayoutRequest } from './PayoutRequest';
 export { AccountLedger, IAccountLedger } from './AccountLedger';
 export { Product, IProduct } from './Product';
+export { Review, IReview } from './Review';

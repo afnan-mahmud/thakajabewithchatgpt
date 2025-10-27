@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +70,8 @@ interface SearchResults {
 }
 
 export default function RoomSearch() {
+  const searchParams = useSearchParams();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<SearchFilters>({
     location: '',
@@ -81,6 +84,33 @@ export default function RoomSearch() {
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
+
+  // Initialize from URL parameters on mount
+  useEffect(() => {
+    if (initialized) return;
+    
+    const q = searchParams.get('q') || '';
+    const location = searchParams.get('location') || '';
+    const minPrice = parseInt(searchParams.get('minPrice') || '0');
+    const maxPrice = parseInt(searchParams.get('maxPrice') || '50000');
+    const roomType = searchParams.get('type') || '';
+    const sortParam = searchParams.get('sort') || 'newest';
+    
+    console.log('Initializing search from URL params:', {
+      q, location, minPrice, maxPrice, roomType, sortParam
+    });
+    
+    setSearchQuery(q);
+    setFilters({
+      location,
+      minPrice,
+      maxPrice,
+      roomType,
+    });
+    setSort(sortParam);
+    setInitialized(true);
+  }, [searchParams, initialized]);
 
   const searchRooms = useCallback(async () => {
     try {
@@ -115,8 +145,10 @@ export default function RoomSearch() {
   }, [searchQuery, filters, sort, page]);
 
   useEffect(() => {
-    searchRooms();
-  }, [searchRooms]);
+    if (initialized) {
+      searchRooms();
+    }
+  }, [searchRooms, initialized]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);

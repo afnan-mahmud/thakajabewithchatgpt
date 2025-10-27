@@ -60,12 +60,12 @@ export function UserMenu({
           variant="ghost"
           size="sm"
           className={cn(
-            "h-8 w-8 p-0 hover:bg-gray-100",
+            "h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center",
             triggerClassName
           )}
           aria-label="User menu"
         >
-          {triggerIcon || <MoreHorizontal className="h-4 w-4" />}
+          {triggerIcon || <User className="h-4 w-4" />}
         </Button>
       </DropdownMenuTrigger>
       

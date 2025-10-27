@@ -231,17 +231,35 @@ router.get('/search', validateQuery(roomSearchSchema), async (req: Request, res:
 
     const filter: any = { status: 'approved' };
 
-    // Text search
+    // Search across multiple fields (title, location, description, address)
     if (q) {
-      filter.$text = { $search: q };
+      const searchRegex = { $regex: q, $options: 'i' };
+      filter.$or = [
+        { title: searchRegex },
+        { locationName: searchRegex },
+        { description: searchRegex },
+        { address: searchRegex }
+      ];
     }
 
-    // Location filter
-    if (location) {
+    // Additional location filter (for when search page applies specific location filter)
+    if (location && !q) {
       filter.$or = [
         { locationName: { $regex: location, $options: 'i' } },
         { address: { $regex: location, $options: 'i' } }
       ];
+    } else if (location && q) {
+      // If both q and location are provided, add location as an additional constraint
+      filter.$and = [
+        { $or: filter.$or },
+        {
+          $or: [
+            { locationName: { $regex: location, $options: 'i' } },
+            { address: { $regex: location, $options: 'i' } }
+          ]
+        }
+      ];
+      delete filter.$or;
     }
 
     // Price filter
@@ -272,14 +290,8 @@ router.get('/search', validateQuery(roomSearchSchema), async (req: Request, res:
         sortOption = { createdAt: 1 };
         break;
       case 'rating':
-        // For now, sort by creation date. Add rating field later
-        sortOption = { createdAt: -1 };
+        sortOption = { averageRating: -1, totalReviews: -1 };
         break;
-    }
-
-    // Add text score for text search (higher relevance first)
-    if (q) {
-      sortOption.score = { $meta: 'textScore' };
     }
 
     const rooms = await Room.find(filter)

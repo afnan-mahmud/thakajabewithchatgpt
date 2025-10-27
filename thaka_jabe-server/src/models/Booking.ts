@@ -12,6 +12,7 @@ export interface IBooking extends Document {
   transactionId: string;
   paymentStatus: 'unpaid' | 'paid' | 'refunded';
   amountTk: number;
+  hasReview: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +71,10 @@ const bookingSchema = new Schema<IBooking>({
     type: Number,
     required: [true, 'Amount is required'],
     min: [0, 'Amount cannot be negative']
+  },
+  hasReview: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

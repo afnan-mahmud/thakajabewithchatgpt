@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation';
 import { TopNav } from '@/components/navigation/TopNav';
 import { BottomNav } from '@/components/navigation/BottomNav';
-import { HeaderSearchBar } from '@/components/navigation/HeaderSearchBar';
 import MobileHeaderBar from '@/components/navigation/MobileHeaderBar';
 
 const HIDE_SEARCH_PATHS = ['/room'];
@@ -21,7 +20,6 @@ export function PublicLayoutShell({
   return (
     <>
       <TopNav />
-      {!hideSearch && <HeaderSearchBar />}
       {!hideSearch && <MobileHeaderBar />}
       <main className="min-h-screen pb-20 md:pb-0">
         {children}

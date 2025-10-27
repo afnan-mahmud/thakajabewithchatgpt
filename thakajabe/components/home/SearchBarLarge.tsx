@@ -50,7 +50,10 @@ export function SearchBarLarge({ variant = 'hero' }: SearchBarLargeProps) {
     // Build query parameters
     const params = new URLSearchParams();
     
-    if (formData.location) params.append('location', formData.location);
+    // Use 'q' for general search across title, location, description, address
+    if (formData.location) {
+      params.append('q', formData.location);
+    }
     if (formData.checkIn) params.append('checkIn', formData.checkIn.toISOString().split('T')[0]);
     if (formData.checkOut) params.append('checkOut', formData.checkOut.toISOString().split('T')[0]);
     if (formData.guests.adults > 0) params.append('adults', formData.guests.adults.toString());
@@ -67,58 +70,64 @@ export function SearchBarLarge({ variant = 'hero' }: SearchBarLargeProps) {
 
   if (variant === 'header') {
     return (
-      <div className="bg-white rounded-full border shadow-sm p-1">
-        {/* Header Layout: One row with dividers */}
-        <div className="flex items-center">
-          {/* Location */}
-          <div className="flex-1 px-4">
-            <LocationCombobox
-              value={formData.location}
-              onChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
-              placeholder="Where are you going?"
-              className="border-0 shadow-none focus:ring-0"
-            />
-          </div>
-
-          {/* Divider */}
-          <div className="w-px h-8 bg-gray-200" />
-
-          {/* Date Range */}
-          <div className="flex-1 px-4">
-            <DateRangePopover
-              value={{ from: formData.checkIn, to: formData.checkOut }}
-              onChange={(range) => setFormData(prev => ({ 
-                ...prev, 
-                checkIn: range.from, 
-                checkOut: range.to 
-              }))}
-              placeholder="Check in – Check out"
-              className="border-0 shadow-none focus:ring-0"
-            />
-          </div>
-
-          {/* Divider */}
-          <div className="w-px h-8 bg-gray-200" />
-
-          {/* Guests */}
-          <div className="flex-1 px-4">
-            <GuestsPopover
-              value={formData.guests}
-              onChange={(guests) => setFormData(prev => ({ ...prev, guests }))}
-              placeholder="Guests"
-              className="border-0 shadow-none focus:ring-0"
-            />
-          </div>
-
-          {/* Search Button */}
-          <Button
-            onClick={handleSearch}
-            onKeyPress={handleKeyPress}
-            className="ml-2 h-10 w-10 rounded-full bg-brand hover:bg-brand/90 text-white p-0 shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
+      <div className="flex h-11 w-full items-center rounded-full border border-gray-200 bg-white/95 px-2 shadow-sm">
+        {/* Location */}
+        <div className="flex min-w-[160px] flex-1 items-center px-2.5">
+          <LocationCombobox
+            value={formData.location}
+            onChange={(value) =>
+              setFormData((prev) => ({ ...prev, location: value }))
+            }
+            placeholder="Where to?"
+            className="w-full"
+            size="compact"
+          />
         </div>
+
+        {/* Divider */}
+        <div className="hidden h-7 w-px bg-gray-200 md:block" />
+
+        {/* Date Range */}
+        <div className="hidden min-w-[160px] flex-1 items-center px-2.5 md:flex">
+          <DateRangePopover
+            value={{ from: formData.checkIn, to: formData.checkOut }}
+            onChange={(range) =>
+              setFormData((prev) => ({
+                ...prev,
+                checkIn: range.from,
+                checkOut: range.to,
+              }))
+            }
+            placeholder="Check-in · Check-out"
+            className="w-full"
+            size="compact"
+          />
+        </div>
+
+        {/* Divider */}
+        <div className="hidden h-7 w-px bg-gray-200 md:block" />
+
+        {/* Guests */}
+        <div className="hidden min-w-[140px] flex-1 items-center px-2.5 md:flex">
+          <GuestsPopover
+            value={formData.guests}
+            onChange={(guests) =>
+              setFormData((prev) => ({ ...prev, guests }))
+            }
+            placeholder="Guests"
+            className="w-full"
+            size="compact"
+          />
+        </div>
+
+        {/* Search Button */}
+        <Button
+          onClick={handleSearch}
+          onKeyPress={handleKeyPress}
+          className="ml-2 flex h-9 w-9 items-center justify-center rounded-full bg-brand text-white transition-colors hover:bg-brand/90"
+        >
+          <Search className="h-4 w-4" />
+        </Button>
       </div>
     );
   }

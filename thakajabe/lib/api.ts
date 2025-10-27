@@ -321,6 +321,18 @@ export const api = {
       apiClient.post('/messages/threads', data),
   },
 
+  // Reviews
+  reviews: {
+    create: (data: { bookingId: string; rating: number; comment: string }) =>
+      apiClient.post('/reviews', data),
+    getRoomReviews: <T = any>(roomId: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get<T>(`/reviews/room/${roomId}`, params),
+    getMyReviews: <T = any>(params?: { page?: number; limit?: number }) =>
+      apiClient.get<T>('/reviews/my', params),
+    checkBookingReview: <T = any>(bookingId: string) =>
+      apiClient.get<T>(`/reviews/booking/${bookingId}`),
+  },
+
   // Payouts
   payouts: {
     getMine: <T = any>(params?: { page?: number; limit?: number; status?: string }) =>

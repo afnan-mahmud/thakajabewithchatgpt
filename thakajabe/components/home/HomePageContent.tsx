@@ -40,40 +40,46 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 export default function HomePageContent() {
   // Fetch different categories of rooms
-  const { rooms: bangladeshRooms, loading: loadingBangladesh, error: errorBangladesh, refetch: refetchBangladesh } = useRooms({
+  
+  // 1. New Arrivals - Newly approved rooms
+  const { rooms: newArrivals, loading: loadingNewArrivals, error: errorNewArrivals, refetch: refetchNewArrivals } = useRooms({
     limit: 6,
     status: 'approved',
-    location: 'bangladesh'
+    sortBy: 'newest'
   });
 
-  const { rooms: familyRooms, loading: loadingFamily, error: errorFamily, refetch: refetchFamily } = useRooms({
+  // 2. Bashundhara Apartment
+  const { rooms: bashundharaRooms, loading: loadingBashundhara, error: errorBashundhara, refetch: refetchBashundhara } = useRooms({
     limit: 6,
     status: 'approved',
-    roomType: 'family'
+    location: 'Bashundhara'
   });
 
-  const { rooms: singleRooms, loading: loadingSingle, error: errorSingle, refetch: refetchSingle } = useRooms({
+  // 3. Uttara Apartment
+  const { rooms: uttaraRooms, loading: loadingUttara, error: errorUttara, refetch: refetchUttara } = useRooms({
     limit: 6,
     status: 'approved',
-    roomType: 'single'
+    location: 'Uttara'
   });
 
-  const { rooms: suiteRooms, loading: loadingSuite, error: errorSuite, refetch: refetchSuite } = useRooms({
-    limit: 6,
+  // 4. Gulshan & Banani Apartment (we'll filter this client-side or use search)
+  const { rooms: gulshanBananiRooms, loading: loadingGulshanBanani, error: errorGulshanBanani, refetch: refetchGulshanBanani } = useRooms({
+    limit: 12,
     status: 'approved',
-    roomType: 'suite'
+    search: 'Gulshan Banani'
   });
 
+  // 5. All Over Dhaka
   const { rooms: dhakaRooms, loading: loadingDhaka, error: errorDhaka, refetch: refetchDhaka } = useRooms({
     limit: 6,
     status: 'approved',
-    location: 'dhaka'
+    location: 'Dhaka'
   });
 
-  const { rooms: chittagongRooms, loading: loadingChittagong, error: errorChittagong, refetch: refetchChittagong } = useRooms({
+  // 6. All Over Bangladesh
+  const { rooms: bangladeshRooms, loading: loadingBangladesh, error: errorBangladesh, refetch: refetchBangladesh } = useRooms({
     limit: 6,
-    status: 'approved',
-    location: 'chittagong'
+    status: 'approved'
   });
 
   // Convert API rooms to the format expected by RoomRail
@@ -84,46 +90,69 @@ export default function HomePageContent() {
       location: room.locationName,
       price: room.totalPriceTk,
       image: room.images[0]?.url || '/images/placeholder-room.jpg',
-      rating: 4.5, // Default rating since we don't have this in the API yet
-      reviews: Math.floor(Math.random() * 100) + 10, // Mock reviews count
+      rating: (room as any).averageRating || 0,
+      reviews: (room as any).totalReviews || 0,
     }));
   };
 
   return (
-    <div className="container space-y-14 py-8 md:py-12">
-      {/* Bangladesh Gateways */}
+    <div className="container space-y-8 py-8 md:py-12">
+      {/* 1. New Arrivals */}
       <SectionHeader 
-        title="Bangladesh Gateways" 
-        subtitle="Discover the best accommodations across Bangladesh"
-        viewAllHref="/search?location=bangladesh"
+        title="New Arrivals"
+        viewAllHref="/search?sort=newest"
       />
-      {loadingBangladesh ? (
+      {loadingNewArrivals ? (
         <RoomRailSkeleton />
-      ) : errorBangladesh ? (
-        <ErrorState message={errorBangladesh} onRetry={refetchBangladesh} />
+      ) : errorNewArrivals ? (
+        <ErrorState message={errorNewArrivals} onRetry={refetchNewArrivals} />
       ) : (
-        <RoomRail items={convertRooms(bangladeshRooms)} />
+        <RoomRail items={convertRooms(newArrivals)} />
       )}
 
-      {/* Signature Apartments */}
+      {/* 2. Bashundhara Apartment */}
       <SectionHeader 
-        title="Signature Apartments" 
-        subtitle="Premium accommodations with exceptional amenities"
-        viewAllHref="/search?type=family"
+        title="Bashundhara Apartment"
+        viewAllHref="/search?location=Bashundhara"
       />
-      {loadingFamily ? (
+      {loadingBashundhara ? (
         <RoomRailSkeleton />
-      ) : errorFamily ? (
-        <ErrorState message={errorFamily} onRetry={refetchFamily} />
+      ) : errorBashundhara ? (
+        <ErrorState message={errorBashundhara} onRetry={refetchBashundhara} />
       ) : (
-        <RoomRail items={convertRooms(familyRooms)} />
+        <RoomRail items={convertRooms(bashundharaRooms)} />
       )}
 
-      {/* Dhaka Homes */}
+      {/* 3. Uttara Apartment */}
       <SectionHeader 
-        title="Dhaka Homes" 
-        subtitle="Experience the capital city like a local"
-        viewAllHref="/search?location=dhaka"
+        title="Uttara Apartment"
+        viewAllHref="/search?location=Uttara"
+      />
+      {loadingUttara ? (
+        <RoomRailSkeleton />
+      ) : errorUttara ? (
+        <ErrorState message={errorUttara} onRetry={refetchUttara} />
+      ) : (
+        <RoomRail items={convertRooms(uttaraRooms)} />
+      )}
+
+      {/* 4. Gulshan & Banani Apartment */}
+      <SectionHeader 
+        title="Gulshan & Banani Apartment"
+        viewAllHref="/search?q=Gulshan Banani"
+      />
+      {loadingGulshanBanani ? (
+        <RoomRailSkeleton />
+      ) : errorGulshanBanani ? (
+        <ErrorState message={errorGulshanBanani} onRetry={refetchGulshanBanani} />
+      ) : (
+        <RoomRail items={convertRooms(gulshanBananiRooms.slice(0, 6))} />
+      )}
+
+      {/* 5. All Over Dhaka */}
+      <SectionHeader 
+        title="All Over Dhaka"
+        viewAllHref="/search?location=Dhaka"
       />
       {loadingDhaka ? (
         <RoomRailSkeleton />
@@ -133,46 +162,17 @@ export default function HomePageContent() {
         <RoomRail items={convertRooms(dhakaRooms)} />
       )}
 
-      {/* Chittagong Comfort Homes */}
+      {/* 6. All Over Bangladesh */}
       <SectionHeader 
-        title="Chittagong Comfort Homes" 
-        subtitle="Relax in the port city's finest accommodations"
-        viewAllHref="/search?location=chittagong"
+        title="All Over Bangladesh"
+        viewAllHref="/search"
       />
-      {loadingChittagong ? (
+      {loadingBangladesh ? (
         <RoomRailSkeleton />
-      ) : errorChittagong ? (
-        <ErrorState message={errorChittagong} onRetry={refetchChittagong} />
+      ) : errorBangladesh ? (
+        <ErrorState message={errorBangladesh} onRetry={refetchBangladesh} />
       ) : (
-        <RoomRail items={convertRooms(chittagongRooms)} />
-      )}
-
-      {/* Studio Apartments */}
-      <SectionHeader 
-        title="Studio Apartments" 
-        subtitle="Perfect for solo travelers and short stays"
-        viewAllHref="/search?type=single"
-      />
-      {loadingSingle ? (
-        <RoomRailSkeleton />
-      ) : errorSingle ? (
-        <ErrorState message={errorSingle} onRetry={refetchSingle} />
-      ) : (
-        <RoomRail items={convertRooms(singleRooms)} />
-      )}
-
-      {/* Small Gatherings */}
-      <SectionHeader 
-        title="Small Gatherings" 
-        subtitle="Spaces perfect for events and group stays"
-        viewAllHref="/search?type=suite"
-      />
-      {loadingSuite ? (
-        <RoomRailSkeleton />
-      ) : errorSuite ? (
-        <ErrorState message={errorSuite} onRetry={refetchSuite} />
-      ) : (
-        <RoomRail items={convertRooms(suiteRooms)} />
+        <RoomRail items={convertRooms(bangladeshRooms)} />
       )}
 
       {/* Why Choose Section */}

@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, MapPin, Star } from 'lucide-react';
+import { Heart, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface RoomCardProps {
   id: string;
@@ -23,11 +24,12 @@ export function RoomCard({
   location, 
   price, 
   image, 
-  rating = 4.5, 
+  rating = 0, 
   reviews = 0,
   className 
 }: RoomCardProps) {
   const [isLiked, setIsLiked] = useState(false);
+  const hasReviews = reviews > 0 && rating > 0;
 
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -38,11 +40,11 @@ export function RoomCard({
   return (
     <Link href={`/room/${id}`} className="block group">
       <div className={cn(
-        'relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1',
+        'relative bg-white rounded-2xl overflow-hidden transition-all duration-300 group-hover:shadow-xl',
         className
       )}>
         {/* Image Container */}
-        <div className="relative aspect-[16/10] overflow-hidden">
+        <div className="relative aspect-[4/3] overflow-hidden">
           <Image
             src={image}
             alt={title}
@@ -53,46 +55,47 @@ export function RoomCard({
           {/* Heart Icon Overlay */}
           <button
             onClick={handleLike}
-            className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
+            className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors shadow-sm z-10"
           >
             <Heart 
               className={cn(
                 'h-4 w-4 transition-colors',
-                isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600 hover:text-red-500'
+                isLiked ? 'fill-red-500 text-red-500' : 'text-gray-700 hover:text-red-500'
               )} 
             />
           </button>
 
-          {/* Rating Badge */}
-          {rating > 0 && (
-            <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center space-x-1">
-              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-              <span className="text-xs font-medium text-gray-900">{rating}</span>
-            </div>
-          )}
+          {/* Carousel Dots */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+            <div className="h-1.5 w-1.5 rounded-full bg-white" />
+            <div className="h-1.5 w-1.5 rounded-full bg-white/50" />
+          </div>
         </div>
 
         {/* Content */}
-        <div className="p-4">
-          <h3 className="font-semibold text-gray-900 text-lg mb-1 line-clamp-1 group-hover:text-brand transition-colors">
+        <div className="p-3 space-y-1.5">
+          {/* Title */}
+          <h3 className="font-semibold text-gray-900 text-sm line-clamp-1">
             {title}
           </h3>
-          
-          <div className="flex items-center text-gray-600 text-sm mb-2">
-            <MapPin className="h-4 w-4 mr-1" />
-            <span className="line-clamp-1">{location}</span>
-          </div>
 
+          {/* Price and Rating */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1">
-              <span className="text-2xl font-bold text-brand">৳{price.toLocaleString()}</span>
-              <span className="text-gray-500 text-sm">/night</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-base font-bold text-brand">৳{price.toLocaleString()}</span>
+              <span className="text-xs text-gray-500">per night</span>
             </div>
             
-            {reviews > 0 && (
-              <div className="text-xs text-gray-500">
-                ({reviews} reviews)
+            {/* Rating or New Badge */}
+            {hasReviews ? (
+              <div className="flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                <span className="text-xs font-semibold text-gray-900">{rating.toFixed(2)}</span>
               </div>
+            ) : (
+              <Badge variant="secondary" className="bg-gray-100 text-gray-700 text-xs font-medium px-2 py-0.5 hover:bg-gray-100">
+                New
+              </Badge>
             )}
           </div>
         </div>

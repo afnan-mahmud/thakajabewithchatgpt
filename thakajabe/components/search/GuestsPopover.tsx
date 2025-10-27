@@ -16,13 +16,15 @@ interface GuestsPopoverProps {
   onChange: (guests: Guests) => void;
   placeholder?: string;
   className?: string;
+  size?: 'default' | 'compact';
 }
 
 export function GuestsPopover({ 
   value, 
   onChange, 
   placeholder = "Guests",
-  className 
+  className,
+  size = 'default'
 }: GuestsPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -64,12 +66,18 @@ export function GuestsPopover({
         <Button
           variant="ghost"
           className={cn(
-            'w-full h-14 justify-start text-left font-normal px-3',
+            'w-full justify-start text-left font-normal',
+            size === 'compact' ? 'h-11 px-2.5 text-sm' : 'h-14 px-3',
             totalGuests === 0 && 'text-gray-400',
             className
           )}
         >
-          <Users className="h-5 w-5 text-gray-400 mr-3" />
+          <Users
+            className={cn(
+              'mr-3 text-gray-400',
+              size === 'compact' ? 'h-4 w-4' : 'h-5 w-5'
+            )}
+          />
           <span className="truncate">{formatGuests()}</span>
         </Button>
       </PopoverTrigger>

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MapPin, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { env } from '@/lib/env';
 
 interface Location {
   id: string;
@@ -18,13 +19,25 @@ interface LocationComboboxProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  size?: 'default' | 'compact';
 }
 
 // API-based location data
 const fetchLocations = async (query: string): Promise<Location[]> => {
   try {
-    const response = await fetch(`/api/locations?s=${encodeURIComponent(query)}`);
+    const apiUrl = `${env.API_BASE_URL}/api/locations?s=${encodeURIComponent(query)}`;
+    console.log('Fetching locations from:', apiUrl);
+    
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      console.error('Location fetch failed:', response.status, response.statusText);
+      return [];
+    }
+    
     const data = await response.json();
+    console.log('Locations fetched:', data);
+    
     return data.map((item: any) => ({
       id: item.id,
       name: item.label,
@@ -41,7 +54,8 @@ export function LocationCombobox({
   value, 
   onChange, 
   placeholder = "Where are you going?",
-  className 
+  className,
+  size = 'default'
 }: LocationComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filteredLocations, setFilteredLocations] = useState<Location[]>([]);
@@ -137,7 +151,12 @@ export function LocationCombobox({
   return (
     <div className={cn('relative', className)}>
       <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <MapPin
+          className={cn(
+            'absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400',
+            size === 'compact' ? 'h-4 w-4' : 'h-5 w-5'
+          )}
+        />
         <Input
           ref={inputRef}
           type="text"
@@ -147,14 +166,22 @@ export function LocationCombobox({
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          className="pl-10 pr-10 h-14 border-0 focus:ring-0 text-base text-gray-700 placeholder:text-gray-400"
+          className={cn(
+            'border-0 focus:ring-0 placeholder:text-gray-400',
+            size === 'compact'
+              ? 'h-11 pl-9 pr-9 text-sm text-gray-700'
+              : 'h-14 pl-10 pr-10 text-base text-gray-700'
+          )}
         />
         {value && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onChange('')}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
+            className={cn(
+              'absolute right-2 top-1/2 -translate-y-1/2 transform p-0 hover:bg-gray-100',
+              size === 'compact' ? 'h-7 w-7 text-xs' : 'h-8 w-8'
+            )}
           >
             ×
           </Button>

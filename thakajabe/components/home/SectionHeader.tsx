@@ -20,27 +20,22 @@ export function SectionHeader({
   className 
 }: SectionHeaderProps) {
   return (
-    <div className={`flex items-center justify-between mb-6 ${className}`}>
+    <div className={`mb-4 flex flex-row items-center justify-between ${className}`}>
       <div>
-        <h2 className="text-2xl md:text-3xl xl:text-4xl font-bold text-gray-900 mb-2">
+        <h2 className="text-lg font-semibold text-gray-900 md:text-xl">
           {title}
         </h2>
-        {subtitle && (
-          <p className="text-gray-600 text-sm md:text-base">
-            {subtitle}
-          </p>
-        )}
       </div>
       
       {viewAllHref && (
         <Link href={viewAllHref}>
           <Button 
-            variant="outline" 
+            variant="ghost" 
             size="sm"
-            className="group hover:bg-brand hover:text-white hover:border-brand transition-all duration-200"
+            className="group h-8 rounded-full text-sm font-medium text-gray-600 hover:text-brand"
           >
             {viewAllText}
-            <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="h-3.5 w-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
           </Button>
         </Link>
       )}

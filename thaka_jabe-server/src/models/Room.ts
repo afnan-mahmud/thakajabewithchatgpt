@@ -23,6 +23,8 @@ export interface IRoom extends Document {
   status: 'pending' | 'approved' | 'rejected';
   instantBooking: boolean;
   unavailableDates: string[];
+  averageRating: number;
+  totalReviews: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -124,7 +126,18 @@ const roomSchema = new Schema<IRoom>({
   unavailableDates: [{
     type: String,
     match: [/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format']
-  }]
+  }],
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: [0, 'Rating cannot be negative'],
+    max: [5, 'Rating cannot exceed 5']
+  },
+  totalReviews: {
+    type: Number,
+    default: 0,
+    min: [0, 'Total reviews cannot be negative']
+  }
 }, {
   timestamps: true
 });

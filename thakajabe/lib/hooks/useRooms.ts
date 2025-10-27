@@ -39,6 +39,7 @@ interface UseRoomsOptions {
   minPrice?: number;
   maxPrice?: number;
   search?: string;
+  sortBy?: 'newest' | 'price' | 'rating';
 }
 
 interface UseRoomsResult {
@@ -66,6 +67,7 @@ export function useRooms(options: UseRoomsOptions = {}): UseRoomsResult {
       if (options.minPrice) queryParams.append('minPrice', options.minPrice.toString());
       if (options.maxPrice) queryParams.append('maxPrice', options.maxPrice.toString());
       if (options.search) queryParams.append('q', options.search);
+      if (options.sortBy) queryParams.append('sort', options.sortBy);
 
       const response = await api.rooms.search<{
         rooms: Room[];
