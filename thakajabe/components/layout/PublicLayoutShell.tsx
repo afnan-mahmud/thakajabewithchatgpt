@@ -4,8 +4,9 @@ import { usePathname } from 'next/navigation';
 import { TopNav } from '@/components/navigation/TopNav';
 import { BottomNav } from '@/components/navigation/BottomNav';
 import MobileHeaderBar from '@/components/navigation/MobileHeaderBar';
+import { Footer } from '@/components/layout/Footer';
 
-const HIDE_SEARCH_PATHS = ['/room'];
+const HIDE_SEARCH_PATHS = ['/room', '/search'];
 
 interface PublicLayoutShellProps {
   children: React.ReactNode;
@@ -24,6 +25,7 @@ export function PublicLayoutShell({
       <main className="min-h-screen pb-20 md:pb-0">
         {children}
       </main>
+      <Footer />
       <BottomNav />
     </>
   );

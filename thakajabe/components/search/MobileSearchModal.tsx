@@ -48,7 +48,8 @@ export function MobileSearchModal({ open, onOpenChange }: MobileSearchModalProps
     // Build query parameters
     const params = new URLSearchParams();
     
-    if (formData.location) params.append('location', formData.location);
+    // Use 'q' for general search across title, location, description, address
+    if (formData.location) params.append('q', formData.location);
     if (formData.checkIn) params.append('checkIn', formData.checkIn.toISOString().split('T')[0]);
     if (formData.checkOut) params.append('checkOut', formData.checkOut.toISOString().split('T')[0]);
     if (formData.guests.adults > 0) params.append('adults', formData.guests.adults.toString());

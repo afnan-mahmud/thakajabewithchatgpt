@@ -353,6 +353,10 @@ export default function JoinHostPage() {
             and{' '}
             <a href="/privacy" className="text-primary hover:underline">
               Privacy Policy
+            </a>{' '}
+            and{' '}
+            <a href="/refund" className="text-primary hover:underline">
+              Refund Policy
             </a>
           </p>
         </div>

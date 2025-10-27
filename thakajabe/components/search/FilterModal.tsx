@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,12 @@ export function FilterModal({ onApplyFilters, currentFilters, className }: Filte
   const [isOpen, setIsOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>(currentFilters);
   const [priceRange, setPriceRange] = useState([currentFilters.minPrice || 0, currentFilters.maxPrice || 50000]);
+
+  // Sync internal state when currentFilters prop changes
+  useEffect(() => {
+    setFilters(currentFilters);
+    setPriceRange([currentFilters.minPrice || 0, currentFilters.maxPrice || 50000]);
+  }, [currentFilters]);
 
   const handleApply = () => {
     const updatedFilters = {
@@ -89,11 +95,17 @@ export function FilterModal({ onApplyFilters, currentFilters, className }: Filte
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className={className}>
-          <Filter className="h-4 w-4 mr-2" />
-          Filters
+        <Button 
+          variant="outline" 
+          className={`relative ${className}`}
+        >
+          <Filter className="h-4 w-4 md:mr-2" />
+          <span className="hidden md:inline">Filters</span>
           {activeFiltersCount > 0 && (
-            <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+            <Badge 
+              variant="secondary" 
+              className="absolute -top-2 -right-2 md:static md:ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-white md:bg-brand text-brand md:text-white border border-brand"
+            >
               {activeFiltersCount}
             </Badge>
           )}
@@ -184,12 +196,15 @@ export function FilterModal({ onApplyFilters, currentFilters, className }: Filte
           {/* Room Type */}
           <div>
             <Label htmlFor="roomType">Room Type</Label>
-            <Select value={filters.roomType} onValueChange={(value) => setFilters(prev => ({ ...prev, roomType: value }))}>
+            <Select 
+              value={filters.roomType || 'all'} 
+              onValueChange={(value) => setFilters(prev => ({ ...prev, roomType: value === 'all' ? '' : value }))}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select room type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
                 {ROOM_TYPES.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}

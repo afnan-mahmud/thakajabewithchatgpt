@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Search, User as UserIcon } from 'lucide-react';
 import { usePixelEvents } from '@/hooks/usePixelEvents';
+import { LocationCombobox } from '@/components/search/LocationCombobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange as ReactDayPickerDateRange } from 'react-day-picker';
@@ -19,6 +20,7 @@ export function TopNav() {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const { fireSearch } = usePixelEvents();
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     location: '',
@@ -29,6 +31,12 @@ export function TopNav() {
       children: 0,
     },
   });
+
+  const handleLocationSelect = (location: string) => {
+    setFormData((prev) => ({ ...prev, location }));
+    // Open date picker after location is selected
+    setTimeout(() => setIsDatePickerOpen(true), 100);
+  };
 
   const handleSearch = () => {
     fireSearch(formData.location, {
@@ -95,22 +103,24 @@ export function TopNav() {
         <div className="flex justify-center pb-6">
           <div className="flex h-16 w-full max-w-[900px] items-center rounded-full border border-gray-300 bg-white shadow-md hover:shadow-lg transition-shadow">
             {/* Where */}
-            <div className="flex min-w-[200px] flex-1 flex-col justify-center px-6 py-2">
-              <label className="text-xs font-semibold text-gray-900">Where</label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                placeholder="Search destinations"
-                className="w-full border-none bg-transparent p-0 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none"
-              />
+            <div className="flex min-w-[200px] flex-1 relative px-6 py-2">
+              <div className="flex flex-col w-full">
+                <label className="text-xs font-semibold text-gray-900 mb-1">Where</label>
+                <LocationCombobox
+                  value={formData.location}
+                  onChange={handleLocationSelect}
+                  placeholder="Search destinations"
+                  size="compact"
+                  className="w-full"
+                />
+              </div>
             </div>
 
             {/* Divider */}
             <div className="h-8 w-px bg-gray-300" />
 
             {/* Check in & Check out with Date Picker */}
-            <Popover>
+            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
               <PopoverTrigger asChild>
                 <div className="flex min-w-[280px] flex-1 cursor-pointer">
                   <div className="flex flex-1 flex-col justify-center px-6 py-2">
@@ -133,22 +143,32 @@ export function TopNav() {
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="center">
-                <Calendar
-                  mode="range"
-                  selected={{ from: formData.checkIn, to: formData.checkOut }}
-                  onSelect={(range: ReactDayPickerDateRange | undefined) => {
-                    if (range) {
-                      setFormData((prev) => ({
-                        ...prev,
-                        checkIn: range.from,
-                        checkOut: range.to,
-                      }));
-                    }
-                  }}
-                  disabled={(date) => isBefore(date, startOfDay(new Date()))}
-                  numberOfMonths={2}
-                  className="rounded-md"
-                />
+                <div className="flex flex-col">
+                  <Calendar
+                    mode="range"
+                    selected={{ from: formData.checkIn, to: formData.checkOut }}
+                    onSelect={(range: ReactDayPickerDateRange | undefined) => {
+                      if (range) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          checkIn: range.from,
+                          checkOut: range.to,
+                        }));
+                      }
+                    }}
+                    disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                    numberOfMonths={2}
+                    className="rounded-md"
+                  />
+                  <div className="border-t border-gray-200 p-4 flex justify-end">
+                    <Button
+                      onClick={() => setIsDatePickerOpen(false)}
+                      className="bg-brand hover:bg-brand/90 text-white px-8"
+                    >
+                      OK
+                    </Button>
+                  </div>
+                </div>
               </PopoverContent>
             </Popover>
 

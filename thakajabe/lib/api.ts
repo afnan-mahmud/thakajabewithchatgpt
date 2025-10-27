@@ -97,6 +97,14 @@ class ApiClient {
     });
   }
 
+  // PATCH request
+  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
   // DELETE request
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
@@ -339,5 +347,38 @@ export const api = {
       apiClient.get<T>('/payouts/mine', params),
     request: (data: any) => apiClient.post('/payouts/request', data),
     get: <T = any>(id: string) => apiClient.get<T>(`/payouts/${id}`),
+  },
+
+  // Blogs (Public)
+  blogs: {
+    getAll: <T = any>(params?: { category?: string; tag?: string; page?: number; limit?: number }) =>
+      apiClient.get<T>('/blogs', params),
+    getBySlug: <T = any>(slug: string) =>
+      apiClient.get<T>(`/blogs/slug/${slug}`),
+  },
+
+  // Blogs (Admin)
+  adminBlogs: {
+    getAll: <T = any>(params?: { published?: boolean; category?: string; page?: number; limit?: number }) =>
+      apiClient.get<T>('/blogs/admin/all', params),
+    getById: <T = any>(id: string) =>
+      apiClient.get<T>(`/blogs/admin/${id}`),
+    create: (data: {
+      title: string;
+      slug?: string;
+      excerpt: string;
+      content: string;
+      image: { url: string; width?: number; height?: number };
+      author?: { name: string; avatar?: string };
+      category: string;
+      tags?: string[];
+      published?: boolean;
+    }) => apiClient.post('/blogs/admin', data),
+    update: (id: string, data: any) =>
+      apiClient.put(`/blogs/admin/${id}`, data),
+    delete: (id: string) =>
+      apiClient.delete(`/blogs/admin/${id}`),
+    togglePublish: (id: string, published: boolean) =>
+      apiClient.patch(`/blogs/admin/${id}/publish`, { published }),
   },
 };

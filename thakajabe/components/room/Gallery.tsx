@@ -52,6 +52,7 @@ export function Gallery({ images, alt }: GalleryProps) {
             src={resolveImageSrc(images[currentIndex])}
             alt={alt}
             fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 70vw"
             className="object-cover cursor-pointer"
             onClick={() => openLightbox(currentIndex)}
           />
@@ -93,6 +94,7 @@ export function Gallery({ images, alt }: GalleryProps) {
                   src={resolveImageSrc(image)}
                   alt={`${alt} ${index + 1}`}
                   fill
+                  sizes="64px"
                   className="object-cover"
                 />
               </button>
@@ -119,6 +121,7 @@ export function Gallery({ images, alt }: GalleryProps) {
                 src={resolveImageSrc(images[currentIndex])}
                 alt={alt}
                 fill
+                sizes="100vw"
                 className="object-contain"
               />
             </div>

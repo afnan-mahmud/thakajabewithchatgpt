@@ -183,11 +183,6 @@ export default function HomePageContent() {
 
       {/* Blog Section */}
       <BlogSection />
-
-      {/* Policy Links */}
-      <div className="py-10 md:py-16 bg-gray-50 -mx-4 md:-mx-6 px-4 md:px-6">
-        <PolicyLinks />
-      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { env } from '@/lib/env';
 
@@ -25,7 +25,8 @@ interface LocationComboboxProps {
 // API-based location data
 const fetchLocations = async (query: string): Promise<Location[]> => {
   try {
-    const apiUrl = `${env.API_BASE_URL}/api/locations?s=${encodeURIComponent(query)}`;
+    // API_BASE_URL already includes /api, so we just add /locations
+    const apiUrl = `${env.API_BASE_URL}/locations?s=${encodeURIComponent(query)}`;
     console.log('Fetching locations from:', apiUrl);
     
     const response = await fetch(apiUrl);
@@ -60,25 +61,46 @@ export function LocationCombobox({
   const [isOpen, setIsOpen] = useState(false);
   const [filteredLocations, setFilteredLocations] = useState<Location[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Filter locations based on input
   useEffect(() => {
     const loadLocations = async () => {
-      if (value.trim() === '') {
-        // Show top 6 cities by default
-        const defaultLocations = await fetchLocations('');
-        setFilteredLocations(defaultLocations.slice(0, 6));
-      } else {
-        const filtered = await fetchLocations(value);
-        setFilteredLocations(filtered.slice(0, 8));
+      setLoading(true);
+      try {
+        if (value.trim() === '') {
+          // Show top 10 cities by default when field is empty or just opened
+          const defaultLocations = await fetchLocations('');
+          console.log('Default locations loaded:', defaultLocations);
+          setFilteredLocations(defaultLocations.slice(0, 10));
+        } else {
+          // Filter locations as user types
+          const filtered = await fetchLocations(value);
+          console.log(`Filtered locations for "${value}":`, filtered);
+          setFilteredLocations(filtered.slice(0, 10));
+        }
+        setSelectedIndex(-1);
+      } catch (error) {
+        console.error('Error loading locations:', error);
+        setFilteredLocations([]);
+      } finally {
+        setLoading(false);
       }
-      setSelectedIndex(-1);
     };
     
-    loadLocations();
-  }, [value]);
+    // Only load when dropdown is open
+    if (isOpen) {
+      // Add debounce for typing
+      const timeoutId = setTimeout(() => {
+        loadLocations();
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [value, isOpen]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,15 +150,36 @@ export function LocationCombobox({
     }
   };
 
-  // Handle input focus
+  // Handle input focus/click - open dropdown immediately
   const handleFocus = () => {
     setIsOpen(true);
   };
 
-  // Handle input blur (with delay to allow clicks)
-  const handleBlur = () => {
-    setTimeout(() => setIsOpen(false), 150);
+  const handleClick = () => {
+    setIsOpen(true);
   };
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -151,12 +194,14 @@ export function LocationCombobox({
   return (
     <div className={cn('relative', className)}>
       <div className="relative">
-        <MapPin
-          className={cn(
-            'absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400',
-            size === 'compact' ? 'h-4 w-4' : 'h-5 w-5'
-          )}
-        />
+        {size !== 'compact' && (
+          <MapPin
+            className={cn(
+              'absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400',
+              'h-5 w-5'
+            )}
+          />
+        )}
         <Input
           ref={inputRef}
           type="text"
@@ -165,23 +210,20 @@ export function LocationCombobox({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
-          onBlur={handleBlur}
+          onClick={handleClick}
           className={cn(
-            'border-0 focus:ring-0 placeholder:text-gray-400',
+            'border-0 focus:ring-0 placeholder:text-gray-400 cursor-pointer bg-transparent',
             size === 'compact'
-              ? 'h-11 pl-9 pr-9 text-sm text-gray-700'
+              ? 'h-auto p-0 text-sm text-gray-600 shadow-none'
               : 'h-14 pl-10 pr-10 text-base text-gray-700'
           )}
         />
-        {value && (
+        {value && size !== 'compact' && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onChange('')}
-            className={cn(
-              'absolute right-2 top-1/2 -translate-y-1/2 transform p-0 hover:bg-gray-100',
-              size === 'compact' ? 'h-7 w-7 text-xs' : 'h-8 w-8'
-            )}
+            className="absolute right-2 top-1/2 -translate-y-1/2 transform p-0 h-8 w-8 hover:bg-gray-100"
           >
             ×
           </Button>
@@ -189,44 +231,48 @@ export function LocationCombobox({
       </div>
 
       {/* Dropdown */}
-      {isOpen && filteredLocations.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-          <div ref={listRef} className="py-2">
-            {filteredLocations.map((location, index) => (
-              <button
-                key={location.id}
-                type="button"
-                onClick={() => handleLocationSelect(location)}
-                className={cn(
-                  'w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors',
-                  selectedIndex === index && 'bg-gray-50',
-                  'flex items-center justify-between'
-                )}
-              >
-                <div className="flex items-center">
-                  <MapPin className="h-4 w-4 text-gray-400 mr-3" />
-                  <div>
-                    <div className="font-medium text-gray-900">{location.name}</div>
-                    <div className="text-sm text-gray-500">{location.country}</div>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400 capitalize">
-                  {location.type}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* No results */}
-      {isOpen && value.trim() !== '' && filteredLocations.length === 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg">
-          <div className="px-4 py-6 text-center text-gray-500">
-            <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-            <p>No locations found</p>
-            <p className="text-sm">Try a different search term</p>
-          </div>
+      {isOpen && (
+        <div 
+          ref={dropdownRef}
+          className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-80 overflow-hidden"
+        >
+          {loading ? (
+            <div className="px-4 py-6 text-center text-gray-500">
+              <Loader2 className="h-6 w-6 mx-auto mb-2 text-gray-400 animate-spin" />
+              <p className="text-sm">Loading locations...</p>
+            </div>
+          ) : filteredLocations.length > 0 ? (
+            <>
+              <div className="px-4 py-3 border-b border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-600">Suggested destinations</h3>
+              </div>
+              <div ref={listRef} className="py-2 max-h-64 overflow-y-auto">
+                {filteredLocations.map((location, index) => (
+                  <button
+                    key={location.id}
+                    type="button"
+                    onClick={() => handleLocationSelect(location)}
+                    className={cn(
+                      'w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors',
+                      selectedIndex === index && 'bg-gray-50',
+                      'flex items-center space-x-3'
+                    )}
+                  >
+                    <MapPin className="h-4 w-4 text-brand flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">{location.name}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="px-4 py-6 text-center text-gray-500">
+              <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+              <p className="font-medium">No locations found</p>
+              <p className="text-sm mt-1">Try searching for a city or area in Bangladesh</p>
+            </div>
+          )}
         </div>
       )}
     </div>

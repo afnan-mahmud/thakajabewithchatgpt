@@ -11,15 +11,23 @@ router.get('/', async (req: Request, res: Response) => {
     const { s } = req.query;
     const searchTerm = s ? String(s).trim() : '';
 
+    console.log('Locations API called with searchTerm:', searchTerm);
+
+    // Build match condition
+    const matchCondition: any = {
+      status: 'approved',
+      locationName: { $exists: true, $ne: '' }
+    };
+
+    // Add search filter if provided
+    if (searchTerm) {
+      matchCondition.locationName = { $regex: searchTerm, $options: 'i' };
+    }
+
     // Get unique location names from approved rooms
     const locations = await Room.aggregate([
       {
-        $match: {
-          status: 'approved',
-          ...(searchTerm && {
-            locationName: { $regex: searchTerm, $options: 'i' }
-          })
-        }
+        $match: matchCondition
       },
       {
         $group: {
@@ -42,6 +50,9 @@ router.get('/', async (req: Request, res: Response) => {
         }
       }
     ]);
+
+    console.log(`Found ${locations.length} locations for search term "${searchTerm}"`);
+    console.log('Locations:', locations.map(l => l.label).join(', '));
 
     return res.json(locations);
   } catch (error) {

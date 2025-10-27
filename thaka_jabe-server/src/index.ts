@@ -24,6 +24,7 @@ import adminRoutes from './routes/admin';
 import messageRoutes from './routes/messages';
 import reviewRoutes from './routes/reviews';
 import locationRoutes from './routes/locations';
+import blogRoutes from './routes/blogs';
 
 // Load environment variables
 const loadEnvFiles = () => {
@@ -125,6 +126,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/blogs', blogRoutes);
 
 // Error handling middleware
 app.use(notFound);

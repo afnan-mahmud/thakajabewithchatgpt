@@ -10,3 +10,4 @@ export { PayoutRequest, IPayoutRequest } from './PayoutRequest';
 export { AccountLedger, IAccountLedger } from './AccountLedger';
 export { Product, IProduct } from './Product';
 export { Review, IReview } from './Review';
+export { Blog, IBlog } from './Blog';
