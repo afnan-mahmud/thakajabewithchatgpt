@@ -108,11 +108,11 @@ export default function BookingDetailsPage() {
     try {
       setProcessing(true);
 
-      // Create booking
+      // Create booking - send dates exactly as received (YYYY-MM-DD)
       const bookingData = {
         roomId: room._id,
-        checkIn: parseISO(checkIn).toISOString(),
-        checkOut: parseISO(checkOut).toISOString(),
+        checkIn: checkIn,
+        checkOut: checkOut,
         guests: adults + children,
         mode: 'instant'
       };
@@ -126,35 +126,33 @@ export default function BookingDetailsPage() {
         
         console.log('Booking created successfully:', bookingId);
 
-        // Initialize payment with SSLCommerz
-        const paymentResponse = await fetch(`${env.API_BASE_URL}/api/payments/ssl/init`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || ''}`
-          },
-          body: JSON.stringify({ bookingId })
-        });
+        // Initialize payment with SSLCommerz using the new helper
+        console.log('Initializing payment with bookingId:', bookingId);
+        const paymentResponse = await api.payments.initSsl({ bookingId });
+        
+        console.log('Payment response:', JSON.stringify(paymentResponse, null, 2));
 
-        const paymentData = await paymentResponse.json();
-
-        if (paymentData.success && paymentData.data?.gatewayUrl) {
+        if (paymentResponse.success && paymentResponse.data?.gatewayUrl) {
           console.log('Payment session created, redirecting to gateway');
           // Redirect to SSLCommerz payment gateway
-          window.location.href = paymentData.data.gatewayUrl;
+          window.location.href = paymentResponse.data.gatewayUrl;
         } else {
-          console.error('Payment initialization failed:', paymentData);
-          alert(paymentData.message || 'Failed to initialize payment. Please try again.');
+          console.error('Payment initialization failed:', paymentResponse);
+          const errorMsg = paymentResponse.error || paymentResponse.message || 'Failed to initialize payment. Please try again.';
+          console.error('Error message:', errorMsg);
+          alert(errorMsg);
           setProcessing(false);
         }
       } else {
         console.error('Booking creation failed:', bookingResponse);
-        alert(bookingResponse.message || 'Failed to create booking. Please try again.');
+        const errorMessage = (bookingResponse as any).error || bookingResponse.message || 'Failed to create booking. Please try again.';
+        alert(errorMessage);
         setProcessing(false);
       }
     } catch (error) {
       console.error('Booking error:', error);
-      alert('Failed to create booking. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create booking. Please try again.';
+      alert(errorMessage);
       setProcessing(false);
     }
   };

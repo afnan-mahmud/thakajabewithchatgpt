@@ -1,10 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { XCircle, Home, RefreshCw, Phone } from 'lucide-react';
 
-export default function BookingFailedPage() {
+function BookingFailedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -138,6 +139,21 @@ export default function BookingFailedPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BookingFailedPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <BookingFailedContent />
+    </Suspense>
   );
 }
 

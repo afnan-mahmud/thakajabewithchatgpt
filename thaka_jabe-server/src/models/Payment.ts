@@ -3,8 +3,8 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IPaymentTransaction extends Document {
   bookingId: mongoose.Types.ObjectId;
   gateway: 'sslcommerz';
-  sslSessionKey: string;
-  valId: string;
+  sslSessionKey?: string;
+  valId?: string;
   amountTk: number;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
   raw: any;
@@ -25,12 +25,12 @@ const paymentTransactionSchema = new Schema<IPaymentTransaction>({
   },
   sslSessionKey: {
     type: String,
-    required: [true, 'SSL session key is required'],
+    required: false,
     trim: true
   },
   valId: {
     type: String,
-    required: [true, 'Validation ID is required'],
+    required: false,
     trim: true
   },
   amountTk: {

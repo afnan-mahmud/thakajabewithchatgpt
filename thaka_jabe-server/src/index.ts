@@ -1,3 +1,6 @@
+// Load environment variables FIRST before anything else
+import 'dotenv/config';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

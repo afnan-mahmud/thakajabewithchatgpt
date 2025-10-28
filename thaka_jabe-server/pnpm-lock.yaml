@@ -59,6 +59,9 @@ dependencies:
   sslcommerz:
     specifier: ^1.7.0
     version: 1.7.0
+  sslcommerz-lts:
+    specifier: ^1.2.0
+    version: 1.2.0
   sslcommerz-nodejs:
     specifier: ^1.0.8
     version: 1.0.8
@@ -5616,6 +5619,18 @@ packages:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
     dev: true
 
+  /node-fetch@2.6.7:
+    resolution: {integrity: sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ==}
+    engines: {node: 4.x || >=6.0.0}
+    peerDependencies:
+      encoding: ^0.1.0
+    peerDependenciesMeta:
+      encoding:
+        optional: true
+    dependencies:
+      whatwg-url: 5.0.0
+    dev: false
+
   /node-fetch@2.7.0:
     resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
     engines: {node: 4.x || >=6.0.0}
@@ -6240,6 +6255,15 @@ packages:
   /sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
     dev: true
+
+  /sslcommerz-lts@1.2.0:
+    resolution: {integrity: sha512-OajULbnHHxzBvFfAqQKz4NMKkmyVBbVEKHbfstsR7wckYh0YfoQhZriHprcr0aQYSUqyOA/mc5g66KcW4/idJQ==}
+    dependencies:
+      form-data: 2.5.5
+      node-fetch: 2.6.7
+    transitivePeerDependencies:
+      - encoding
+    dev: false
 
   /sslcommerz-nodejs@1.0.8:
     resolution: {integrity: sha512-7sI9/iYMYKk+bSgIZGYFMgqGeSjaI7aHQd0HCBebsUx2IcbaDmIUOPw7SynizRb+Mfe6dWEsuJ/05U02TMDjBg==}

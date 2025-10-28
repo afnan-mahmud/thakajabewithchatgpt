@@ -25,18 +25,11 @@ export function PublicLayoutShell({
   return (
     <>
       {/* Desktop TopNav - hide on booking pages */}
-      {!hideAllNav && (
-        <div className="hidden md:block">
-          <TopNav />
-        </div>
-      )}
+      {!hideAllNav && <TopNav />}
       
       {/* Mobile TopNav and HeaderBar - hide on room details and booking pages */}
       {!hideAllNavOnMobile && !hideAllNav && (
         <>
-          <div className="md:hidden">
-            <TopNav />
-          </div>
           {!hideSearch && <MobileHeaderBar />}
         </>
       )}

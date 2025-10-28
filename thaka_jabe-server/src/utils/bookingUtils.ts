@@ -11,9 +11,10 @@ import mongoose from 'mongoose';
 export async function hasOverlap(
   roomId: string,
   checkIn: Date,
-  checkOut: Date
+  checkOut: Date,
+  excludeBookingId?: string
 ): Promise<boolean> {
-  const overlap = await Booking.exists({
+  const query: Record<string, unknown> = {
     roomId,
     status: { $in: ['pending', 'confirmed'] },
     $expr: {
@@ -22,8 +23,13 @@ export async function hasOverlap(
         { $gt: ['$checkOut', checkIn] }
       ]
     }
-  });
-  
+  };
+
+  if (excludeBookingId) {
+    query._id = { $ne: new mongoose.Types.ObjectId(excludeBookingId) };
+  }
+
+  const overlap = await Booking.exists(query);
   return !!overlap;
 }
 

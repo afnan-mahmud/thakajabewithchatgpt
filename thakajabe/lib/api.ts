@@ -55,7 +55,12 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Request failed');
+        console.error('API request failed:', { status: response.status, data });
+        return {
+          success: false,
+          error: data.error || data.message || 'Request failed',
+          message: data.message || data.error || 'Request failed',
+        };
       }
 
       return data;
@@ -64,6 +69,7 @@ class ApiClient {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -242,6 +248,7 @@ export const api = {
   // Payments
   payments: {
     create: <T = any>(data: any) => apiClient.post<T>('/payments/ssl/create', data),
+    initSsl: (data: { bookingId: string }) => apiClient.post<{ gatewayUrl: string; sessionKey: string }>('/payments/ssl/init', data),
     verify: <T = any>(params: { val_id: string; tran_id: string }) =>
       apiClient.post<T>('/payments/ssl/verify', params),
     status: <T = any>(transactionId: string) => apiClient.get<T>(`/payments/status/${transactionId}`),

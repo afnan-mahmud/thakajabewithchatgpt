@@ -4,16 +4,15 @@ import { requireUser, AuthenticatedRequest } from '../middleware/auth';
 import { paymentInitSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 import { hasOverlap } from '../utils/bookingUtils';
-const sslcommerz = require('sslcommerz-nodejs');
+import { sslConfig, getMaskedStoreId } from '../utils/sslConfig';
+const SSLCommerzPayment = require('sslcommerz-lts');
 
 const router: express.Router = express.Router();
 
-// SSLCOMMERZ configuration
-const sslcommerzConfig = {
-  store_id: process.env.SSL_STORE_ID!,
-  store_passwd: process.env.SSL_STORE_PASSWD!,
-  is_live: process.env.NODE_ENV === 'production'
-};
+// Initialize SSLCommerz with validated config
+const store_id = sslConfig.storeId;
+const store_passwd = sslConfig.storePassword;
+const is_live = sslConfig.isLive;
 
 // @route   POST /api/payments/ssl/init
 // @desc    Initialize SSLCOMMERZ payment with comprehensive validation
@@ -77,7 +76,8 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
     const hasOverlappingBookings = await hasOverlap(
       booking.roomId._id.toString(),
       booking.checkIn,
-      booking.checkOut
+      booking.checkOut,
+      (booking._id as any).toString()
     );
 
     if (hasOverlappingBookings) {
@@ -112,11 +112,11 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
       total_amount: totalAmount,
       currency: 'BDT',
       tran_id: (paymentTransaction._id as any).toString(),
-      success_url: `${process.env.BACKEND_URL}/api/payments/ssl/success`,
-      fail_url: `${process.env.BACKEND_URL}/api/payments/ssl/fail`,
-      cancel_url: `${process.env.BACKEND_URL}/api/payments/ssl/cancel`,
-      ipn_url: `${process.env.BACKEND_URL}/api/payments/ssl/ipn`,
-      multi_card_name: 'brac_visa,mastercard,amex,dbbl_nexus',
+      success_url: sslConfig.successUrl,
+      fail_url: sslConfig.failUrl,
+      cancel_url: sslConfig.cancelUrl,
+      ipn_url: sslConfig.ipnUrl,
+      shipping_method: 'NO',
       product_name: `Room Booking - ${(booking.roomId as any).title}`,
       product_category: 'Accommodation',
       product_profile: 'general',
@@ -125,7 +125,21 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
       cus_phone: (booking.userId as any).phone,
       cus_add1: 'Dhaka',
       cus_city: 'Dhaka',
+      cus_state: 'Dhaka',
+      cus_postcode: '1000',
       cus_country: 'Bangladesh',
+      cus_fax: (booking.userId as any).phone,
+      ship_name: (booking.userId as any).name,
+      ship_add1: 'Dhaka',
+      ship_add2: 'Dhaka',
+      ship_city: 'Dhaka',
+      ship_state: 'Dhaka',
+      ship_postcode: '1000',
+      ship_country: 'Bangladesh',
+      // Removed multi_card_name to enable ALL payment methods:
+      // - Mobile Banking: bKash, Nagad, Rocket, Upay
+      // - Cards: Visa, Mastercard, Amex, all local cards
+      // - Internet Banking: All supported banks
       value_a: (booking._id as any).toString(),
       value_b: (booking.userId as any)._id.toString(),
       value_c: (booking.hostId as any)._id.toString(),
@@ -133,9 +147,17 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
     };
 
     console.log(`[PAYMENT_INIT] Creating SSL session for transaction: ${paymentTransaction._id}`);
+    console.log(`[PAYMENT_INIT] SSL Config:`, { 
+      store_id: getMaskedStoreId(store_id),
+      is_live: is_live ? '🔴 LIVE' : '🟡 SANDBOX'
+    });
+    console.log(`[PAYMENT_INIT] Payment Data:`, JSON.stringify(paymentData, null, 2));
 
     // Create SSL session using official integration
-    const sslSession = await sslcommerz.init(paymentData, sslcommerzConfig);
+    const sslcommerz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+    const sslSession = await sslcommerz.init(paymentData);
+    
+    console.log(`[PAYMENT_INIT] SSL Response:`, JSON.stringify(sslSession, null, 2));
     
     if (sslSession.status === 'SUCCESS') {
       // Update payment transaction with session key
@@ -153,18 +175,20 @@ router.post('/ssl/init', requireUser, validateBody(paymentInitSchema), async (re
         }
       });
     } else {
-      console.error(`[PAYMENT_INIT] SSL session creation failed: ${sslSession.failedreason}`);
+      console.error(`[PAYMENT_INIT] SSL session creation failed:`, sslSession);
       return res.status(400).json({
         success: false,
-        message: 'Failed to create payment session',
-        error: sslSession.failedreason
+        message: sslSession.failedreason || 'Failed to create payment session',
+        error: sslSession.failedreason || 'SSL session creation failed'
       });
     }
   } catch (error) {
     console.error('[PAYMENT_INIT] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: errorMessage,
+      error: errorMessage
     });
   }
 });
@@ -196,7 +220,8 @@ router.get('/ssl/success', async (req, res) => {
 
     // Verify payment with SSLCOMMERZ
     console.log(`[PAYMENT_SUCCESS] Verifying payment with SSLCOMMERZ for val_id: ${val_id}`);
-    const verification = await sslcommerz.validate({ val_id: val_id as string }, sslcommerzConfig);
+    const sslcommerz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+    const verification = await sslcommerz.validate({ val_id: val_id as string });
 
     if (verification.status === 'VALID' && verification.amount === amount) {
       console.log(`[PAYMENT_SUCCESS] Payment verified successfully for transaction: ${tran_id}`);
@@ -349,7 +374,8 @@ router.post('/ssl/ipn', async (req, res) => {
 
     // Verify payment with SSLCOMMERZ
     console.log(`[PAYMENT_IPN] Verifying payment with SSLCOMMERZ for val_id: ${val_id}`);
-    const verification = await sslcommerz.validate({ val_id }, sslcommerzConfig);
+    const sslcommerz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+    const verification = await sslcommerz.validate({ val_id });
 
     if (verification.status === 'VALID') {
       console.log(`[PAYMENT_IPN] Payment verified successfully for transaction: ${tran_id}`);
