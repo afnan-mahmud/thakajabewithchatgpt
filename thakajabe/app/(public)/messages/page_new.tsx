@@ -40,7 +40,7 @@ interface BookingDetails {
 
 export default function MessagesPage() {
   const { user } = useSessionUser();
-  const { threads, loading: chatLoading, sendMessage, refreshThreads } = useChat();
+  const { threads, loading: chatLoading, sendMessage } = useChat();
   const router = useRouter();
   
   const [selectedThread, setSelectedThread] = useState<any>(null);
@@ -48,11 +48,6 @@ export default function MessagesPage() {
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
   const [bookings, setBookings] = useState<{ [key: string]: BookingDetails }>({});
-
-  // Refresh threads when page loads to get latest conversations
-  useEffect(() => {
-    refreshThreads();
-  }, []);
 
   // Load booking details for threads
   useEffect(() => {

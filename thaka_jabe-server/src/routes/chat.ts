@@ -47,7 +47,62 @@ const initializeFirebase = () => {
   return true;
 };
 
-initializeFirebase();
+const syncExistingThreadsToFirebase = async () => {
+  if (!db) {
+    return;
+  }
+
+  try {
+    const threads = await MessageThread.find({})
+      .populate('roomId', 'title')
+      .lean();
+
+    for (const thread of threads) {
+      const threadId = thread._id.toString();
+      const threadRef = db.ref(`/threads/${threadId}`);
+
+      const roomTitle = (thread.roomId as any)?.title || 'Room';
+      const lastMessageAt = (thread.lastMessageAt || thread.createdAt || new Date()).toISOString();
+
+      await threadRef.child('meta').set({
+        roomId: (thread.roomId as any)?._id?.toString?.() || (thread.roomId as any)?.toString?.() || '',
+        userId: (thread.userId as any).toString(),
+        hostId: (thread.hostId as any).toString(),
+        roomName: roomTitle,
+        lastMessageAt,
+      });
+
+      const messages = await Message.find({ threadId: thread._id, blocked: false })
+        .sort({ createdAt: 1 })
+        .lean();
+
+      if (messages.length > 0) {
+        const payload: Record<string, any> = {};
+        messages.forEach((message) => {
+          payload[message._id.toString()] = {
+            senderRole: message.senderRole,
+            text: message.text,
+            createdAt: message.createdAt.toISOString(),
+          };
+        });
+
+        await threadRef.child('messages').set(payload);
+      }
+    }
+
+    console.log(`[CHAT] Synced ${threads.length} threads to Firebase RTDB`);
+  } catch (error) {
+    console.warn('[CHAT] Failed to sync existing threads to Firebase:', error);
+  }
+};
+
+if (initializeFirebase()) {
+  setImmediate(() => {
+    syncExistingThreadsToFirebase().catch((err) =>
+      console.warn('[CHAT] Sync error:', err)
+    );
+  });
+}
 
 // Use the new sanitizer utility
 const sanitizeMessage = (text: string) => {
@@ -185,12 +240,17 @@ router.post('/messages', requireUser, validateBody(messageCreateSchema), async (
     // Write to Firebase RTDB (if available)
     if (db) {
       try {
+        // Get room details for better display
+        const room = await Room.findById(messageThread.roomId);
+        const roomName = room ? room.title : 'Room';
+        
         // Write thread metadata
         const threadMetaRef = db.ref(`/threads/${messageThread._id}/meta`);
         await threadMetaRef.set({
           roomId: messageThread.roomId.toString(),
           userId: messageThread.userId.toString(),
           hostId: messageThread.hostId.toString(),
+          roomName: roomName,
           lastMessageAt: messageThread.lastMessageAt.toISOString()
         });
 
@@ -271,11 +331,16 @@ router.post('/threads', requireUser, async (req: AuthenticatedRequest, res) => {
     // Write to Firebase RTDB (if available)
     if (db) {
       try {
+        // Get room details for better display
+        const room = await Room.findById(roomId);
+        const roomName = room ? room.title : 'Room';
+        
         const threadMetaRef = db.ref(`/threads/${messageThread._id}/meta`);
         await threadMetaRef.set({
           roomId: messageThread.roomId.toString(),
           userId: messageThread.userId.toString(),
           hostId: messageThread.hostId.toString(),
+          roomName: roomName,
           lastMessageAt: messageThread.lastMessageAt.toISOString()
         });
       } catch (error) {
@@ -311,24 +376,48 @@ router.get('/threads/ids', requireUser, async (req: AuthenticatedRequest, res) =
     const userId = req.user!.id;
     const userRole = req.user!.role;
 
-    let query: any = {};
+    console.log(`[CHAT] Getting thread IDs for user: ${userId}, role: ${userRole}`);
+
+    let threads: any[] = [];
 
     if (userRole === 'admin') {
       // Admin can see all threads
-      query = {};
+      threads = await MessageThread.find({})
+        .select('_id roomId userId hostId lastMessageAt')
+        .sort({ lastMessageAt: -1 });
     } else if (userRole === 'host') {
       // Host can see threads where they are the host
-      query = { hostId: userId };
+      // Need to get host profile first
+      const hostProfile = await HostProfile.findOne({ userId: userId });
+      if (hostProfile) {
+        threads = await MessageThread.find({ hostId: hostProfile._id })
+          .select('_id roomId userId hostId lastMessageAt')
+          .sort({ lastMessageAt: -1 });
+      }
+      console.log(`[CHAT] Host found ${threads.length} threads`);
     } else {
-      // Guest can see threads where they are the user
-      query = { userId: userId };
+      // Regular user/guest - find threads where they are the userId
+      console.log(`[CHAT] Guest query - Looking for userId: ${userId} (type: ${typeof userId})`);
+      threads = await MessageThread.find({ userId: userId })
+        .select('_id roomId userId hostId lastMessageAt')
+        .sort({ lastMessageAt: -1 });
+      console.log(`[CHAT] User found ${threads.length} threads for userId: ${userId}`);
+      
+      // Debug: Show all threads in DB for this user
+      if (threads.length === 0) {
+        const allThreads = await MessageThread.find({}).select('userId');
+        console.log(`[CHAT] DEBUG - Total threads in DB: ${allThreads.length}`);
+        console.log(`[CHAT] DEBUG - Sample userId from threads:`, allThreads.slice(0, 3).map(t => t.userId.toString()));
+      }
     }
 
-    const threads = await MessageThread.find(query)
-      .select('_id roomId userId hostId lastMessageAt')
-      .sort({ lastMessageAt: -1 });
+    const threadIds = threads.map(t => t._id.toString());
 
-    const threadIds = threads.map(thread => (thread._id as any).toString());
+    console.log(`[CHAT] Returning ${threadIds.length} thread IDs`);
+    if (threadIds.length > 0) {
+      console.log(`[CHAT] Sample thread IDs:`, threadIds.slice(0, 3));
+      console.log(`[CHAT] Sample thread userId:`, (threads[0].userId as any)?.toString());
+    }
 
     return res.json({
       success: true,

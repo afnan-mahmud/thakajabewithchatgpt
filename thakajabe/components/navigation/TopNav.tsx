@@ -22,6 +22,7 @@ export function TopNav() {
   const { fireSearch } = usePixelEvents();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   const [formData, setFormData] = useState({
     location: '',
@@ -33,8 +34,10 @@ export function TopNav() {
     },
   });
 
-  // Handle scroll to toggle compact mode
+  // Set mounted state to avoid hydration mismatch
   useEffect(() => {
+    setIsMounted(true);
+    
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
       setIsScrolled(scrollPosition > 50);
@@ -70,11 +73,14 @@ export function TopNav() {
     router.push(`/search?${params.toString()}`);
   };
 
+  // Only render dynamic content after mount to prevent hydration mismatch
+  const showCompactMode = isMounted && isScrolled;
+
   return (
-    <header className={`hidden md:block sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm transition-all duration-300 ${isScrolled ? 'py-2' : ''}`}>
+    <header className={`hidden md:block sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm transition-all duration-300 ${showCompactMode ? 'py-2' : ''}`}>
       <div className="mx-auto w-full max-w-[1400px] px-8">
         {/* Single Row Layout When Scrolled */}
-        {isScrolled ? (
+        {showCompactMode ? (
           <div className="flex h-16 items-center justify-between gap-4">
         {/* Logo */}
         <Link

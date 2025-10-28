@@ -1,5 +1,5 @@
 // Load environment variables FIRST before anything else
-import 'dotenv/config';
+import './config/env';
 
 import express from 'express';
 import cors from 'cors';
@@ -7,8 +7,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
-import path from 'path';
 import mongoose from 'mongoose';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
@@ -28,32 +26,6 @@ import messageRoutes from './routes/messages';
 import reviewRoutes from './routes/reviews';
 import locationRoutes from './routes/locations';
 import blogRoutes from './routes/blogs';
-
-// Load environment variables
-const loadEnvFiles = () => {
-  const envFiles = ['.env.local', '.env'];
-  const loadedVars = new Set<string>();
-  
-  envFiles.forEach((file) => {
-    const result = dotenv.config({ path: path.resolve(process.cwd(), file) });
-    if (result.parsed) {
-      Object.keys(result.parsed).forEach(key => loadedVars.add(key));
-    }
-  });
-  
-  // Check for required environment variables
-  const missingVars = [];
-  if (!process.env.JWT_SECRET) missingVars.push('JWT_SECRET');
-  if (!process.env.MONGODB_URI) missingVars.push('MONGODB_URI');
-  
-  if (missingVars.length > 0) {
-    console.warn(`⚠️  Missing environment variables: ${missingVars.join(', ')}`);
-  }
-  
-  return loadedVars;
-};
-
-loadEnvFiles();
 
 const app: express.Application = express();
 const PORT = process.env.PORT || 8080;

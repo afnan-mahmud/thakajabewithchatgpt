@@ -3,6 +3,7 @@ import { Message, MessageThread, Room, User, HostProfile } from '../models';
 import { requireUser, requireHost, requireAdmin, AuthenticatedRequest } from '../middleware/auth';
 import { paginationSchema } from '../schemas';
 import { validateQuery } from '../middleware/validateRequest';
+import { sanitizeText } from '../utils/sanitizer';
 
 const router: express.Router = express.Router();
 
@@ -160,6 +161,16 @@ router.post('/threads/:threadId', requireHost, async (req: AuthenticatedRequest,
       return res.status(400).json({
         success: false,
         message: 'Message text is required'
+      });
+    }
+
+    // Sanitize message to block contact information
+    const sanitized = sanitizeText(text.trim());
+    if (!sanitized.clean) {
+      return res.status(400).json({
+        success: false,
+        message: 'Message blocked: Cannot share contact information (phone, email, URLs)',
+        reason: sanitized.reason
       });
     }
 

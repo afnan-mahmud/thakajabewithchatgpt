@@ -144,8 +144,8 @@ export default function BookingsPage() {
               <Card key={booking._id}>
                 <CardContent className="p-4">
                   <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
-                    {/* Room Image */}
-                    <div className="relative w-full md:w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                    {/* Room Image - Square on both mobile and desktop */}
+                    <div className="relative w-full aspect-square md:w-24 md:h-24 rounded-lg overflow-hidden flex-shrink-0">
                       <Image
                         src={booking.roomId.images[0]?.url || '/placeholder-room.jpg'}
                         alt={booking.roomId.title}

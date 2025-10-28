@@ -14,8 +14,24 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { useHostMessageThreads, useHostMessages, HostMessageThread, HostMessage } from '@/lib/hooks/useHostData';
+
+// Safe date formatter
+const formatDate = (dateString: any, formatString: string = 'MMM dd') => {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = typeof dateString === 'string' ? parseISO(dateString) : new Date(dateString);
+    if (isValid(date)) {
+      return format(date, formatString);
+    }
+    return 'N/A';
+  } catch (error) {
+    console.error('Date formatting error:', error);
+    return 'N/A';
+  }
+};
 
 export default function HostMessages() {
   const { threads, loading: threadsLoading, error: threadsError } = useHostMessageThreads();
@@ -157,7 +173,7 @@ export default function HostMessages() {
                           {thread.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                         <span className="text-xs text-gray-500 mt-1">
-                          {format(new Date(thread.lastMessageAt), 'MMM dd')}
+                          {formatDate(thread.lastMessageAt, 'MMM dd')}
                         </span>
                         <span className="text-xs text-gray-400">
                           {thread.messageCount} msgs
@@ -225,7 +241,7 @@ export default function HostMessages() {
                         </div>
                         <p className="text-sm">{message.text}</p>
                         <p className="text-xs opacity-70 mt-1">
-                          {format(new Date(message.timestamp), 'HH:mm')}
+                          {formatDate(message.timestamp, 'HH:mm')}
                         </p>
                       </div>
                     </div>
