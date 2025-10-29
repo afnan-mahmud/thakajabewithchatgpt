@@ -339,7 +339,7 @@ router.get('/search', validateQuery(roomSearchSchema), async (req: Request, res:
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const room = await Room.findById(req.params.id)
-      .populate('hostId', 'displayName phone whatsapp locationName');
+      .populate('hostId', 'displayName phone whatsapp locationName locationMapUrl');
 
     if (!room) {
       return res.status(404).json({

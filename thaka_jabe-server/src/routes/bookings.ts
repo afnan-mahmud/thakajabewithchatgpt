@@ -209,8 +209,8 @@ router.get('/mine', requireUser, validateQuery(paginationSchema.merge(statusFilt
     if (status) filter.status = status;
 
     const bookings = await Booking.find(filter)
-      .populate('roomId', 'title images totalPriceTk')
-      .populate('hostId', 'displayName')
+      .populate('roomId', 'title images totalPriceTk locationName')
+      .populate('hostId', 'displayName phone locationMapUrl')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));

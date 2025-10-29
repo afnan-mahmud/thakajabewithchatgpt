@@ -55,6 +55,7 @@ interface BackendRoom {
     _id: string;
     displayName: string;
     locationName: string;
+    locationMapUrl: string;
   };
   averageRating?: number;
   totalReviews?: number;
@@ -68,6 +69,36 @@ const resolveImageSrc = (image: string) => {
   const normalized = image.startsWith('/') ? image : `/${image}`;
   return `${env.IMG_BASE_URL}${normalized}`;
 };
+
+// Helper function to extract coordinates from Google Maps URL
+const extractCoordinates = (mapUrl: string): { lat: number; lng: number } | null => {
+  try {
+    // Extract coordinates from standard Google Maps URLs
+    const coordMatch = mapUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (coordMatch) {
+      return {
+        lat: parseFloat(coordMatch[1]),
+        lng: parseFloat(coordMatch[2])
+      };
+    }
+    
+    // Handle query parameters format
+    const latMatch = mapUrl.match(/[?&]lat=(-?\d+\.\d+)/);
+    const lngMatch = mapUrl.match(/[?&]lng=(-?\d+\.\d+)/);
+    if (latMatch && lngMatch) {
+      return {
+        lat: parseFloat(latMatch[1]),
+        lng: parseFloat(lngMatch[1])
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error extracting coordinates:', error);
+    return null;
+  }
+};
+
 
 export default function RoomDetails() {
   const params = useParams();
@@ -263,7 +294,7 @@ export default function RoomDetails() {
       </div>
     );
   }
-
+  
   return (
     <div className="min-h-screen bg-white">
       {/* Mobile Image Carousel - Only on Mobile - Full width from top */}
@@ -336,8 +367,8 @@ export default function RoomDetails() {
               priority
               unoptimized
             />
-          </div>
-          
+        </div>
+
           {/* Four Smaller Images */}
           {room.images.slice(1, 5).map((image, index) => (
             <div 
@@ -414,7 +445,7 @@ export default function RoomDetails() {
               <div className="flex items-center gap-3">
                 {room.ratings.count > 0 ? (
                   <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                     <span className="font-semibold">{room.ratings.average.toFixed(1)}</span>
                     <span className="text-gray-600">({room.ratings.count} reviews)</span>
                   </div>
@@ -511,10 +542,10 @@ export default function RoomDetails() {
                 >
                   Clear dates
                 </button>
-              </div>
             </div>
+          </div>
 
-            {/* Host Info */}
+          {/* Host Info */}
             <div className="border border-gray-200 rounded-xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -529,8 +560,8 @@ export default function RoomDetails() {
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
+                <Button 
+                  variant="outline" 
                   onClick={() => setIsChatOpen(true)}
                   className="border-brand text-brand hover:bg-brand/5"
                 >
@@ -548,7 +579,7 @@ export default function RoomDetails() {
             <div className="space-y-3">
               <h2 className="text-xl font-bold text-gray-900">Things to know ↓</h2>
               <div className="space-y-4">
-                <div>
+          <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Cancellation Policy</h3>
                   <ul className="space-y-1 text-sm text-gray-700">
                     <li>- 80% of the total booking amount will be refunded if it's canceled 24hours before the check-in date.</li>
@@ -562,10 +593,48 @@ export default function RoomDetails() {
             {/* Map */}
             <div className="space-y-3">
               <h2 className="text-xl font-bold text-gray-900">Map</h2>
-              <div className="w-full h-64 bg-gray-200 rounded-xl flex items-center justify-center text-gray-500">
-                <MapPin className="h-8 w-8" />
-              </div>
-            </div>
+              {backendRoom?.hostId?.locationMapUrl ? (
+                <div className="w-full h-96 rounded-xl overflow-hidden border border-gray-200 relative">
+                  <iframe
+                    src={`https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${
+                      (() => {
+                        const coords = extractCoordinates(backendRoom.hostId.locationMapUrl);
+                        if (coords) {
+                          return `${coords.lat},${coords.lng}`;
+                        }
+                        return '23.8103,90.4125'; // Default to Dhaka
+                      })()
+                    }&zoom=15&maptype=roadmap`}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Property Location Map"
+                  />
+                  {/* Circle overlay to indicate approximate area */}
+                  <div 
+                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                    style={{
+                      width: '120px',
+                      height: '120px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(239, 68, 68, 0.25)',
+                      border: '3px solid rgba(239, 68, 68, 0.6)',
+                      boxShadow: '0 0 20px rgba(239, 68, 68, 0.3)'
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-64 bg-gray-200 rounded-xl flex items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <MapPin className="h-8 w-8 mx-auto mb-2" />
+                    <p>Map not available</p>
+                  </div>
+                </div>
+              )}
+          </div>
 
             {/* Review */}
             <div className="space-y-3">
@@ -647,14 +716,14 @@ export default function RoomDetails() {
                     <div className="space-y-4">
                       {/* Adults */}
                       <div className="flex items-center justify-between">
-                        <div>
+              <div>
                           <div className="font-medium text-gray-900">Adults</div>
                           <div className="text-sm text-gray-500">Ages 13 or above</div>
                         </div>
                         <div className="flex items-center space-x-3">
-                          <Button
-                            variant="outline"
-                            size="icon"
+                  <Button
+                    variant="outline"
+                    size="icon"
                             onClick={() => setGuests((prev) => ({
                               ...prev,
                               adults: Math.max(1, prev.adults - 1)
@@ -663,11 +732,11 @@ export default function RoomDetails() {
                             className="h-8 w-8 rounded-full"
                           >
                             <Minus className="h-4 w-4" />
-                          </Button>
+                  </Button>
                           <span className="w-8 text-center font-medium">{guests.adults}</span>
-                          <Button
-                            variant="outline"
-                            size="icon"
+                  <Button
+                    variant="outline"
+                    size="icon"
                             onClick={() => setGuests((prev) => ({
                               ...prev,
                               adults: Math.min(16, prev.adults + 1)
@@ -676,9 +745,9 @@ export default function RoomDetails() {
                             className="h-8 w-8 rounded-full"
                           >
                             <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
+                  </Button>
+                </div>
+              </div>
 
                       {/* Children */}
                       <div className="flex items-center justify-between">
@@ -733,7 +802,7 @@ export default function RoomDetails() {
                 </div>
               )}
 
-              <Button
+              <Button 
                 onClick={handleBooking}
                 className="w-full bg-brand hover:bg-brand/90 text-white font-semibold py-6 text-base"
               >

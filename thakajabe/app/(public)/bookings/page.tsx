@@ -6,7 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Users, MapPin, MessageCircle, ExternalLink, CreditCard, Star } from 'lucide-react';
+import { Calendar, Users, MapPin, MessageCircle, ExternalLink, CreditCard, Star, Map, Phone } from 'lucide-react';
 import Image from 'next/image';
 import { env } from '@/lib/env';
 import Link from 'next/link';
@@ -20,6 +20,12 @@ interface Booking {
     title: string;
     images: Array<{ url: string; w: number; h: number }>;
     locationName: string;
+  };
+  hostId: {
+    _id: string;
+    displayName: string;
+    phone: string;
+    locationMapUrl: string;
   };
   checkIn: string;
   checkOut: string;
@@ -185,6 +191,28 @@ export default function BookingsPage() {
                         </div>
                       </div>
 
+                      {/* Host Information - Show only for confirmed bookings */}
+                      {booking.status === 'confirmed' && booking.hostId && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">Host Information</h4>
+                          <div className="space-y-1 text-sm text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Name:</span>
+                              <span>{booking.hostId.displayName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                              <a 
+                                href={`tel:${booking.hostId.phone}`}
+                                className="hover:text-brand transition-colors"
+                              >
+                                {booking.hostId.phone}
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap gap-2 pt-2">
                         {booking.status === 'confirmed' && booking.paymentStatus === 'unpaid' && (
                           <Button 
@@ -197,6 +225,24 @@ export default function BookingsPage() {
                             <CreditCard className="h-4 w-4 mr-1" />
                             Pay Now
                           </Button>
+                        )}
+                        
+                        {/* Maps Button - Show only for confirmed bookings with map URL */}
+                        {booking.status === 'confirmed' && booking.hostId?.locationMapUrl && (
+                          <a 
+                            href={booking.hostId.locationMapUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
+                            >
+                              <Map className="h-4 w-4 mr-1" />
+                              Maps
+                            </Button>
+                          </a>
                         )}
                         
                         {/* Review Button - Shows only for completed stays */}

@@ -49,8 +49,8 @@ export function BottomNav() {
   }, []);
 
   useEffect(() => {
-    // Only add scroll listener on mobile
-    if (!isMobile) return;
+    // Only add scroll listener on mobile and after client is mounted
+    if (!isClient || !isMobile) return;
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -75,7 +75,7 @@ export function BottomNav() {
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [isMobile, lastScrollY]);
+  }, [isClient, isMobile, lastScrollY]);
 
   const navItems = [
     {
@@ -105,16 +105,17 @@ export function BottomNav() {
     },
   ];
 
-  // Don't render anything on desktop or during SSR or while loading auth
-  if (!isClient || !isMobile || isLoading) {
+  // Don't render anything on desktop or during SSR
+  if (!isClient || !isMobile) {
     return null;
   }
 
   return (
     <nav className={cn(
-      "fixed bottom-0 left-0 right-0 z-40 border-t bg-white/95 backdrop-blur supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ease-in-out",
+      "fixed bottom-0 left-0 right-0 z-40 border-t bg-white/95 backdrop-blur supports-[padding-bottom:env(safe-area-inset-bottom)]:pb-[env(safe-area-inset-bottom)] no-flicker",
       isVisible ? "translate-y-0" : "translate-y-full"
-    )}>
+    )}
+    style={{ transition: 'transform 0.3s ease-in-out' }}>
       <div className="h-16 grid grid-cols-5 text-xs">
         {/* Navigation Items */}
         {navItems.map((item) => (

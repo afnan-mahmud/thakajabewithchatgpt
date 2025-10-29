@@ -21,6 +21,7 @@ interface AuthContextType {
     name: string;
     role: 'admin' | 'host' | 'guest';
     phone?: string;
+    createdAt?: string;
   } | null;
   accessToken: string | null;
   isLoading: boolean;
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     name: session.user.name || '',
     role: session.user.role as 'admin' | 'host' | 'guest',
     phone: (session.user as any).phone,
+    createdAt: (session.user as any).createdAt,
   } : null;
 
   const value: AuthContextType = {

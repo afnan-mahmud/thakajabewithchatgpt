@@ -12,10 +12,12 @@ import {
   Home,
   Send,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  MessageCircle
 } from 'lucide-react';
 import { format, isValid, parseISO } from 'date-fns';
 import { useHostMessageThreads, useHostMessages, HostMessageThread, HostMessage } from '@/lib/hooks/useHostData';
+import { HostChatModal } from '@/components/chat/HostChatModal';
 
 // Safe date formatter
 const formatDate = (dateString: any, formatString: string = 'MMM dd') => {
@@ -39,6 +41,7 @@ export default function HostMessages() {
   const [selectedThread, setSelectedThread] = useState<HostMessageThread | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [newMessage, setNewMessage] = useState('');
+  const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
   const { messages, loading: messagesLoading, error: messagesError, sendMessage } = useHostMessages(selectedThread?._id || null);
 
@@ -154,7 +157,10 @@ export default function HostMessages() {
                     className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
                       selectedThread?._id === thread._id ? 'bg-blue-50 border-blue-200' : ''
                     }`}
-                    onClick={() => setSelectedThread(thread)}
+                    onClick={() => {
+                      setSelectedThread(thread);
+                      setIsMobileModalOpen(true);
+                    }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
@@ -277,6 +283,18 @@ export default function HostMessages() {
           )}
         </div>
       </div>
+
+      {/* Mobile Chat Modal */}
+      <HostChatModal
+        thread={selectedThread}
+        messages={messages}
+        isOpen={isMobileModalOpen}
+        onClose={() => setIsMobileModalOpen(false)}
+        onSendMessage={async (text) => {
+          await sendMessage(text);
+        }}
+        sending={false}
+      />
     </div>
   );
 }

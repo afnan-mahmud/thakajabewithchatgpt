@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { TopNav } from '@/components/navigation/TopNav';
 import { BottomNav } from '@/components/navigation/BottomNav';
@@ -30,7 +31,11 @@ export function PublicLayoutShell({
       {/* Mobile TopNav and HeaderBar - hide on room details and booking pages */}
       {!hideAllNavOnMobile && !hideAllNav && (
         <>
-          {!hideSearch && <MobileHeaderBar />}
+          {!hideSearch && (
+            <Suspense fallback={<div className="h-16 md:hidden" />}>
+              <MobileHeaderBar />
+            </Suspense>
+          )}
         </>
       )}
       

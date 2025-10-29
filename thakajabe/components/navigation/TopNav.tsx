@@ -77,7 +77,7 @@ export function TopNav() {
   const showCompactMode = isMounted && isScrolled;
 
   return (
-    <header className={`hidden md:block sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm transition-all duration-300 ${showCompactMode ? 'py-2' : ''}`}>
+    <header className={`hidden md:block sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm no-flicker ${showCompactMode ? 'py-2' : ''}`} style={{ transition: 'padding 0.3s ease' }}>
       <div className="mx-auto w-full max-w-[1400px] px-8">
         {/* Single Row Layout When Scrolled */}
         {showCompactMode ? (

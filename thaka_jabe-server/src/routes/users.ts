@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { User } from '../models';
 import { requireUser, AuthenticatedRequest } from '../middleware/auth';
 
@@ -73,6 +74,63 @@ router.put('/me', requireUser, async (req: AuthenticatedRequest, res) => {
     });
   } catch (error) {
     console.error('Update profile error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// @route   POST /api/users/change-password
+// @desc    Change user password
+// @access  Private
+router.post('/change-password', requireUser, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters'
+      });
+    }
+
+    // Get user with password hash
+    const user = await User.findById(req.user!.id).select('+passwordHash');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Hash new password
+    const saltRounds = 12;
+    user.passwordHash = await bcrypt.hash(newPassword, saltRounds);
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error'

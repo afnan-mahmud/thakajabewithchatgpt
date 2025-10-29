@@ -222,6 +222,14 @@ export const api = {
     profile: () => apiClient.get('/auth/profile'),
   },
 
+  // Users
+  users: {
+    getProfile: () => apiClient.get('/users/me'),
+    update: (data: { name?: string; phone?: string }) => apiClient.put('/users/me', data),
+    changePassword: (data: { currentPassword: string; newPassword: string }) => 
+      apiClient.post('/users/change-password', data),
+  },
+
   // Rooms
   rooms: {
     list: <T = any>(params?: { page?: number; limit?: number; category?: string; search?: string }) =>

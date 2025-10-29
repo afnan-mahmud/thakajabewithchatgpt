@@ -398,16 +398,32 @@ router.get('/threads/ids', requireUser, async (req: AuthenticatedRequest, res) =
     } else {
       // Regular user/guest - find threads where they are the userId
       console.log(`[CHAT] Guest query - Looking for userId: ${userId} (type: ${typeof userId})`);
-      threads = await MessageThread.find({ userId: userId })
+      
+      // Try both direct match and ObjectId match
+      const mongoose = require('mongoose');
+      const userIdObj = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+      
+      threads = await MessageThread.find({
+        $or: [
+          { userId: userId },
+          { userId: userIdObj },
+          { userId: userId.toString() }
+        ]
+      })
         .select('_id roomId userId hostId lastMessageAt')
         .sort({ lastMessageAt: -1 });
       console.log(`[CHAT] User found ${threads.length} threads for userId: ${userId}`);
       
       // Debug: Show all threads in DB for this user
       if (threads.length === 0) {
-        const allThreads = await MessageThread.find({}).select('userId');
-        console.log(`[CHAT] DEBUG - Total threads in DB: ${allThreads.length}`);
-        console.log(`[CHAT] DEBUG - Sample userId from threads:`, allThreads.slice(0, 3).map(t => t.userId.toString()));
+        const allThreads = await MessageThread.find({}).select('_id userId').limit(5);
+        console.log(`[CHAT] DEBUG - Total threads in DB: ${await MessageThread.countDocuments()}`);
+        console.log(`[CHAT] DEBUG - Sample threads:`, allThreads.map(t => ({
+          id: (t._id as any).toString(),
+          userId: (t.userId as any).toString(),
+          match: (t.userId as any).toString() === userId.toString()
+        })));
+        console.log(`[CHAT] DEBUG - Looking for userId:`, userId.toString());
       }
     }
 
@@ -452,7 +468,18 @@ router.get('/threads', requireUser, validateQuery(paginationSchema), async (req:
     let filter: any = {};
 
     if (req.user!.role === 'guest') {
-      filter.userId = req.user!.id;
+      // Try multiple formats to find threads
+      const mongoose = require('mongoose');
+      const userId = req.user!.id;
+      const userIdObj = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+      
+      filter = {
+        $or: [
+          { userId: userId },
+          { userId: userIdObj },
+          { userId: userId.toString() }
+        ]
+      };
     } else if (req.user!.role === 'host') {
       const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
       if (hostProfile) {
