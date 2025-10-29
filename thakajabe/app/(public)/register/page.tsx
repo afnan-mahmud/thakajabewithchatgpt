@@ -10,13 +10,14 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email'),
+  phone: z.string().min(11, 'Phone number must be at least 11 digits').regex(/^[0-9+]+$/, 'Please enter a valid phone number'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -51,7 +52,7 @@ export default function RegisterPage() {
         name: data.name,
         email: data.email,
         password: data.password,
-        phone: '', // Add required phone field
+        phone: data.phone,
       });
 
       if (response.success) {
@@ -130,6 +131,23 @@ export default function RegisterPage() {
                   </div>
                   {errors.email && (
                     <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+
+                {/* Phone Number */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      {...register('phone')}
+                      type="tel"
+                      placeholder="Enter your phone number (e.g., 01234567890)"
+                      className={`pl-10 ${errors.phone ? 'border-red-500' : ''}`}
+                    />
+                  </div>
+                  {errors.phone && (
+                    <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
                   )}
                 </div>
 

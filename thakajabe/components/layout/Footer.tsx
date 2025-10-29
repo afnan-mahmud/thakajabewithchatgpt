@@ -9,6 +9,7 @@ export function Footer() {
     { label: 'Rooms', href: '/search?type=room' },
     { label: 'Hotels', href: '/search?type=hotel' },
     { label: 'Popular Locations', href: '/search' },
+    { label: 'Join as Host', href: '/join-host' },
     { label: 'Refund Policy', href: '/refund' },
   ];
 
