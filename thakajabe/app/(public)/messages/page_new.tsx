@@ -213,7 +213,7 @@ export default function MessagesPage() {
 
                           {lastMessage && (
                             <p className="text-sm text-gray-700 truncate">
-                              {lastMessage.senderRole === 'user' ? 'You: ' : ''}
+                              {lastMessage.senderRole === 'guest' ? 'You: ' : ''}
                               {lastMessage.text}
                             </p>
                           )}
