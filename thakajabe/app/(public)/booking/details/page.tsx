@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,7 @@ const resolveImageSrc = (image: string) => {
   return `${env.IMG_BASE_URL}${normalized}`;
 };
 
-export default function BookingDetailsPage() {
+function BookingDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -383,3 +383,14 @@ export default function BookingDetailsPage() {
   );
 }
 
+export default function BookingDetailsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
+      </div>
+    }>
+      <BookingDetailsContent />
+    </Suspense>
+  );
+}
