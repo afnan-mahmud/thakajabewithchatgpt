@@ -34,6 +34,7 @@ interface BackendRoom {
   description: string;
   address: string;
   locationName: string;
+  locationMapUrl?: string;
   roomType: 'single' | 'double' | 'family' | 'suite' | 'other';
   amenities: string[];
   basePriceTk: number;
@@ -55,7 +56,7 @@ interface BackendRoom {
     _id: string;
     displayName: string;
     locationName: string;
-    locationMapUrl: string;
+    locationMapUrl?: string;
   };
   averageRating?: number;
   totalReviews?: number;
@@ -593,12 +594,13 @@ export default function RoomDetails() {
             {/* Map */}
             <div className="space-y-3">
               <h2 className="text-xl font-bold text-gray-900">Map</h2>
-              {backendRoom?.hostId?.locationMapUrl ? (
+              {(backendRoom?.locationMapUrl || backendRoom?.hostId?.locationMapUrl) ? (
                 <div className="w-full h-96 rounded-xl overflow-hidden border border-gray-200 relative">
                   <iframe
                     src={`https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${
                       (() => {
-                        const coords = extractCoordinates(backendRoom.hostId.locationMapUrl);
+                        const mapUrl = backendRoom.locationMapUrl || backendRoom.hostId?.locationMapUrl || '';
+                        const coords = extractCoordinates(mapUrl);
                         if (coords) {
                           return `${coords.lat},${coords.lng}`;
                         }

@@ -6,6 +6,7 @@ export interface IRoom extends Document {
   description: string;
   address: string;
   locationName: string;
+  locationMapUrl?: string;
   geo?: {
     lat: number;
     lng: number;
@@ -60,6 +61,12 @@ const roomSchema = new Schema<IRoom>({
     required: [true, 'Location name is required'],
     trim: true,
     maxlength: [200, 'Location name cannot exceed 200 characters']
+  },
+  locationMapUrl: {
+    type: String,
+    required: false,
+    trim: true,
+    match: [/^https?:\/\/.+/, 'Please provide a valid map URL']
   },
   geo: {
     lat: {
