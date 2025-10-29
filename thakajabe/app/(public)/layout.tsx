@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { PublicLayoutShell } from '@/components/layout/PublicLayoutShell';
 
 export default function PublicLayout({
@@ -8,8 +9,10 @@ export default function PublicLayout({
   children: React.ReactNode
 }) {
   return (
-    <PublicLayoutShell>
-      {children}
-    </PublicLayoutShell>
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <PublicLayoutShell>
+        {children}
+      </PublicLayoutShell>
+    </Suspense>
   )
 }
