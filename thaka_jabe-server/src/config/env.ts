@@ -5,8 +5,11 @@ const envFiles = ['.env.local', '.env'];
 
 envFiles.forEach((file) => {
   const result = dotenv.config({ path: path.resolve(process.cwd(), file) });
-  if (result.error && (result.error as NodeJS.ErrnoException).code !== 'ENOENT') {
-    console.warn(`⚠️  Failed to load ${file}:`, result.error.message);
+  if (result.error) {
+    const err = result.error as NodeJS.ErrnoException;
+    if (err.code !== 'ENOENT') {
+      console.warn(`⚠️  Failed to load ${file}:`, err.message);
+    }
   }
 });
 
