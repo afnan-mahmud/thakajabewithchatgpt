@@ -84,7 +84,7 @@ function BookingDetailsContent() {
         setRoom(response.data as BackendRoom);
       }
     } catch (error) {
-      console.error('Failed to load room:', error);
+      // Error loading room
     } finally {
       setLoading(false);
     }
@@ -117,40 +117,29 @@ function BookingDetailsContent() {
         mode: 'instant'
       };
 
-      console.log('Creating booking with data:', bookingData);
       const bookingResponse = await api.bookings.create(bookingData);
 
       if (bookingResponse.success && bookingResponse.data) {
         const booking = bookingResponse.data as any;
         const bookingId = booking.bookingId || booking._id;
-        
-        console.log('Booking created successfully:', bookingId);
 
-        // Initialize payment with SSLCommerz using the new helper
-        console.log('Initializing payment with bookingId:', bookingId);
+        // Initialize payment with SSLCommerz
         const paymentResponse = await api.payments.initSsl({ bookingId });
-        
-        console.log('Payment response:', JSON.stringify(paymentResponse, null, 2));
 
         if (paymentResponse.success && paymentResponse.data?.gatewayUrl) {
-          console.log('Payment session created, redirecting to gateway');
           // Redirect to SSLCommerz payment gateway
           window.location.href = paymentResponse.data.gatewayUrl;
         } else {
-          console.error('Payment initialization failed:', paymentResponse);
           const errorMsg = paymentResponse.error || paymentResponse.message || 'Failed to initialize payment. Please try again.';
-          console.error('Error message:', errorMsg);
           alert(errorMsg);
           setProcessing(false);
         }
       } else {
-        console.error('Booking creation failed:', bookingResponse);
         const errorMessage = (bookingResponse as any).error || bookingResponse.message || 'Failed to create booking. Please try again.';
         alert(errorMessage);
         setProcessing(false);
       }
     } catch (error) {
-      console.error('Booking error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create booking. Please try again.';
       alert(errorMessage);
       setProcessing(false);

@@ -23,42 +23,54 @@ export const roomImageUpload = multer({
   }
 });
 
-// Image processing middleware for room images
+// Image processing middleware for room images (OPTIMIZED: Parallel processing)
 export const processRoomImages = async (req: Request, res: any, next: any) => {
   try {
     if (!req.files || !Array.isArray(req.files)) {
       return next();
     }
 
-    const processedFiles: string[] = [];
     const roomId = req.params.roomId || req.body.roomId || 'temp';
 
-    for (const file of req.files) {
+    // Process all images in parallel for faster upload
+    const processPromises = req.files.map(async (file) => {
       try {
         // Generate unique key for R2
         const key = `rooms/${roomId}/${uuidv4()}.webp`;
         
-        // Process image with sharp
+        // Process image with sharp (optimized settings)
         const processedBuffer = await sharp(file.buffer)
           .resize(1920, 1920, {
             fit: 'inside',
             withoutEnlargement: true
           })
-          .webp({ quality: 80 })
+          .webp({ 
+            quality: 80,
+            effort: 2 // Lower effort = faster processing (0-6, default 4)
+          })
           .toBuffer();
 
         // Upload to R2
         const publicUrl = await uploadToR2(key, processedBuffer, 'image/webp');
-        processedFiles.push(publicUrl);
 
-        console.log(`[IMAGE_PROCESS] Processed: ${file.originalname} -> ${publicUrl}`);
+        console.log(`[IMAGE_PROCESS] ✓ Processed: ${file.originalname} -> ${publicUrl}`);
+        return publicUrl;
       } catch (error) {
-        console.error(`[IMAGE_PROCESS] Error processing ${file.originalname}:`, error);
+        console.error(`[IMAGE_PROCESS] ✗ Error processing ${file.originalname}:`, error);
+        return null;
       }
-    }
+    });
+
+    // Wait for all images to be processed
+    const results = await Promise.all(processPromises);
+    
+    // Filter out failed uploads
+    const processedFiles = results.filter((url): url is string => url !== null);
 
     // Attach processed files to request
     req.processedImages = processedFiles;
+    
+    console.log(`[IMAGE_PROCESS] Completed: ${processedFiles.length}/${req.files.length} images processed successfully`);
     next();
   } catch (error) {
     console.error('[IMAGE_PROCESS] Error:', error);

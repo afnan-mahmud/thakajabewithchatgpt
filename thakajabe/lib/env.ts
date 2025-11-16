@@ -13,6 +13,8 @@ export function getEnv() {
     FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
     FIREBASE_DB_URL: process.env.NEXT_PUBLIC_FIREBASE_DB_URL,
     FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    // Note: Google Maps API key is optional - we use free embed method that doesn't require API key
+    GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   };
 }

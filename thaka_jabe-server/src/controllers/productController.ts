@@ -1,22 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
 import { Product } from '../models';
 import { AppError } from '../middleware/errorHandler';
+import { validatePagination, sanitizeSearchQuery, escapeRegex, isValidObjectId } from '../utils/validation';
 
 export const getProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    // Validate and sanitize pagination
+    const { page, limit } = validatePagination(req.query.page, req.query.limit);
     const skip = (page - 1) * limit;
+    
     const { category, search } = req.query;
 
     // Build filter object
     const filter: any = {};
-    if (category) filter.category = category;
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+    
+    // Sanitize category input
+    if (category && typeof category === 'string') {
+      filter.category = category.trim();
+    }
+    
+    // Sanitize and escape search query to prevent NoSQL injection
+    if (search && typeof search === 'string') {
+      const sanitizedSearch = escapeRegex(search.trim());
+      if (sanitizedSearch) {
+        filter.$or = [
+          { name: { $regex: sanitizedSearch, $options: 'i' } },
+          { description: { $regex: sanitizedSearch, $options: 'i' } }
+        ];
+      }
     }
 
     const products = await Product.find(filter)
@@ -45,6 +56,11 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
 
 export const getProductById = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Validate MongoDB ObjectId
+    if (!isValidObjectId(req.params.id)) {
+      return next(new AppError('Invalid product ID format', 400));
+    }
+
     const product = await Product.findById(req.params.id);
     if (!product) {
       return next(new AppError('Product not found', 404));
@@ -75,6 +91,11 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
 
 export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Validate MongoDB ObjectId
+    if (!isValidObjectId(req.params.id)) {
+      return next(new AppError('Invalid product ID format', 400));
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -97,6 +118,11 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
 
 export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Validate MongoDB ObjectId
+    if (!isValidObjectId(req.params.id)) {
+      return next(new AppError('Invalid product ID format', 400));
+    }
+
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) {
       return next(new AppError('Product not found', 404));

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { compressImage, formatFileSize } from '@/lib/image-compression';
 
 interface UploadFieldProps {
   onFileSelect: (file: File | null) => void;
@@ -10,6 +11,7 @@ interface UploadFieldProps {
   maxSize?: number; // in bytes
   maxFiles?: number;
   className?: string;
+  compress?: boolean; // Enable automatic compression
 }
 
 export function UploadField({ 
@@ -17,31 +19,58 @@ export function UploadField({
   accept = 'image/*', 
   maxSize = 5 * 1024 * 1024, // 5MB default
   maxFiles = 1,
-  className = ''
+  className = '',
+  compress = true
 }: UploadFieldProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFiles = (newFiles: FileList | File[]) => {
+  const handleFiles = async (newFiles: FileList | File[]) => {
     const fileArray = Array.from(newFiles);
     const validFiles: File[] = [];
 
-    fileArray.forEach(file => {
-      // Check file size
-      if (file.size > maxSize) {
-        alert(`File ${file.name} is too large. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB`);
-        return;
-      }
-
+    for (const file of fileArray) {
       // Check file type
       if (accept && !file.type.match(accept.replace('*', '.*'))) {
         alert(`File ${file.name} is not a valid file type`);
-        return;
+        continue;
       }
 
-      validFiles.push(file);
-    });
+      // Compress if enabled and it's an image
+      if (compress && file.type.startsWith('image/')) {
+        setCompressing(true);
+        try {
+          const compressedFile = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1080,
+            quality: 0.85,
+            maxSizeMB: 1,
+          });
+
+          // Check compressed file size
+          if (compressedFile.size > maxSize) {
+            alert(`File ${file.name} is too large even after compression. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB`);
+            setCompressing(false);
+            continue;
+          }
+
+          validFiles.push(compressedFile);
+        } catch (error) {
+          console.error('Compression error:', error);
+          alert(`Failed to compress ${file.name}`);
+        }
+        setCompressing(false);
+      } else {
+        // Check file size without compression
+        if (file.size > maxSize) {
+          alert(`File ${file.name} is too large. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB`);
+          continue;
+        }
+        validFiles.push(file);
+      }
+    }
 
     if (validFiles.length > 0) {
       const updatedFiles = maxFiles === 1 ? [validFiles[0]] : [...files, ...validFiles].slice(0, maxFiles);
@@ -110,7 +139,21 @@ export function UploadField({
           multiple={maxFiles > 1}
         />
 
-        {files.length === 0 ? (
+        {compressing ? (
+          <div className="space-y-2">
+            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                Compressing image...
+              </p>
+              <p className="text-xs text-blue-600">
+                Optimizing for faster upload
+              </p>
+            </div>
+          </div>
+        ) : files.length === 0 ? (
           <div className="space-y-2">
             <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
               <Upload className="h-6 w-6 text-gray-400" />
@@ -121,6 +164,7 @@ export function UploadField({
               </p>
               <p className="text-xs text-gray-500">
                 {accept.includes('image') ? 'PNG, JPG, GIF up to' : 'Files up to'} {Math.round(maxSize / 1024 / 1024)}MB
+                {compress && accept.includes('image') && ' (auto-optimized)'}
               </p>
             </div>
             <Button
@@ -128,6 +172,7 @@ export function UploadField({
               variant="outline"
               size="sm"
               onClick={openFileDialog}
+              disabled={compressing}
             >
               Choose File
             </Button>
@@ -145,6 +190,7 @@ export function UploadField({
               variant="outline"
               size="sm"
               onClick={openFileDialog}
+              disabled={compressing}
             >
               Change File
             </Button>

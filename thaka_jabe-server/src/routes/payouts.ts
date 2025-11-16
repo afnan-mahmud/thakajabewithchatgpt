@@ -1,6 +1,7 @@
 import express from 'express';
 import { PayoutRequest, HostProfile, AccountLedger } from '../models';
 import { requireUser, requireHost, requireAdmin, AuthenticatedRequest } from '../middleware/auth';
+import { requireApprovedHost } from '../middleware/hostCheck';
 import { payoutRequestSchema, payoutApprovalSchema, paginationSchema, statusFilterSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 
@@ -55,23 +56,16 @@ router.get('/mine', requireHost, validateQuery(paginationSchema.merge(statusFilt
 });
 
 // @route   POST /api/payouts/request
-// @desc    Create a payout request
-// @access  Private (host)
-router.post('/request', requireHost, validateBody(payoutRequestSchema), async (req: AuthenticatedRequest, res) => {
+// @desc    Create a payout request (requires approved host)
+// @access  Private (approved host only)
+router.post('/request', requireUser, requireApprovedHost, validateBody(payoutRequestSchema), async (req: AuthenticatedRequest, res) => {
   try {
-    // Get host profile
+    // Get host profile (already verified as approved by middleware)
     const hostProfile = await HostProfile.findOne({ userId: req.user!.id });
     if (!hostProfile) {
       return res.status(404).json({
         success: false,
         message: 'Host profile not found'
-      });
-    }
-
-    if (hostProfile.status !== 'approved') {
-      return res.status(400).json({
-        success: false,
-        message: 'Host profile must be approved to request payouts'
       });
     }
 

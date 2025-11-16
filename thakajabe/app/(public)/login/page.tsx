@@ -60,7 +60,6 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
       setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);

@@ -35,33 +35,64 @@ app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://thakajabe.com', 'https://www.thakajabe.com']
-    : ['http://localhost:3000'],
+    : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true
 }));
 
-// Rate limiting
+// Rate limiting - Adjusted for better user experience
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500, // Increased to 500 requests per 15 minutes (33 req/min)
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for static assets
+    return req.path.startsWith('/uploads/');
+  }
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // limit auth endpoints to 50 requests per windowMs (increased for testing)
+  max: 20, // Stricter limit for auth endpoints to prevent brute force
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later.'
   },
+  skipSuccessfulRequests: true, // Don't count successful auth requests
 });
 
-app.use(limiter);
-// app.use('/api/auth', authLimiter); // Temporarily disabled for testing
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 50, // 50 uploads per hour
+  message: {
+    success: false,
+    message: 'Too many upload requests, please try again later.'
+  },
+});
+
+const searchLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // 100 searches per minute (increased for development)
+  message: {
+    success: false,
+    message: 'Too many search requests, please slow down.'
+  },
+  skip: (req) => {
+    // Skip rate limiting in development mode
+    return process.env.NODE_ENV !== 'production';
+  }
+});
+
+// Apply rate limiters
+app.use(limiter); // General rate limit for all routes
+app.use('/api/auth/login', authLimiter); // Strict limit for login
+app.use('/api/auth/register', authLimiter); // Strict limit for registration
+app.use('/api/uploads', uploadLimiter); // Upload-specific limit
+app.use('/api/rooms/search', searchLimiter); // Search-specific limit
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

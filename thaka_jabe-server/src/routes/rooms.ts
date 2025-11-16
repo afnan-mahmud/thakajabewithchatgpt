@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { Room, HostProfile } from '../models';
 import { requireUser, requireHost, requireAdmin } from '../middleware/auth';
+import { requireHostProfile } from '../middleware/hostCheck';
 import { roomCreateSchema, roomUpdateSchema, roomApprovalSchema, roomSearchSchema, unavailableDatesSchema } from '../schemas';
 import { validateBody, validateQuery } from '../middleware/validateRequest';
 import { checkBookingOverlap } from '../utils/bookingUtils';
@@ -17,9 +18,9 @@ interface AuthenticatedRequest extends Request {
 const router: express.Router = express.Router();
 
 // @route   POST /api/rooms
-// @desc    Create a new room (host only)
-// @access  Private (host)
-router.post('/', requireHost, validateBody(roomCreateSchema), async (req: AuthenticatedRequest, res: Response) => {
+// @desc    Create a new room (host profile required, approval not required)
+// @access  Private (any user with host profile)
+router.post('/', requireUser, requireHostProfile, validateBody(roomCreateSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log('Room creation request received:', {
       userId: req.user?.id,
@@ -87,9 +88,9 @@ router.post('/', requireHost, validateBody(roomCreateSchema), async (req: Authen
 });
 
 // @route   PUT /api/rooms/:id
-// @desc    Update a room (host only)
-// @access  Private (host)
-router.put('/:id', requireHost, validateBody(roomUpdateSchema), async (req: AuthenticatedRequest, res: Response) => {
+// @desc    Update a room (host profile required)
+// @access  Private (any user with host profile)
+router.put('/:id', requireUser, requireHostProfile, validateBody(roomUpdateSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) {
@@ -132,9 +133,9 @@ router.put('/:id', requireHost, validateBody(roomUpdateSchema), async (req: Auth
 });
 
 // @route   DELETE /api/rooms/:id
-// @desc    Delete a room (host only)
-// @access  Private (host)
-router.delete('/:id', requireHost, async (req: AuthenticatedRequest, res: Response) => {
+// @desc    Delete a room (host profile required)
+// @access  Private (any user with host profile)
+router.delete('/:id', requireUser, requireHostProfile, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) {
@@ -176,8 +177,8 @@ router.delete('/:id', requireHost, async (req: AuthenticatedRequest, res: Respon
 
 // @route   GET /api/rooms/mine
 // @desc    Get current host's rooms
-// @access  Private (host)
-router.get('/mine', requireHost, async (req: AuthenticatedRequest, res: Response) => {
+// @access  Private (any user with host profile)
+router.get('/mine', requireUser, requireHostProfile, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { page, limit, status } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -362,9 +363,9 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // @route   POST /api/rooms/:id/unavailable
-// @desc    Set unavailable dates for a room (host only)
-// @access  Private (host)
-router.post('/:id/unavailable', requireHost, validateBody(unavailableDatesSchema), async (req: AuthenticatedRequest, res: Response) => {
+// @desc    Set unavailable dates for a room
+// @access  Private (any user with host profile)
+router.post('/:id/unavailable', requireUser, requireHostProfile, validateBody(unavailableDatesSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) {
@@ -481,7 +482,7 @@ router.get('/hosts/rooms/unavailable', requireHost, async (req: AuthenticatedReq
 // @route   DELETE /api/rooms/:id/unavailable
 // @desc    Remove unavailable dates for a room (host only)
 // @access  Private (host)
-router.delete('/:id/unavailable', requireHost, validateBody(unavailableDatesSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id/unavailable', requireUser, requireHostProfile, validateBody(unavailableDatesSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) {

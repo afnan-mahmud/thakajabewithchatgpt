@@ -89,10 +89,6 @@ export default function RoomSearch() {
     const roomType = searchParams.get('type') || '';
     const sortParam = searchParams.get('sort') || 'newest';
     
-    console.log('Initializing search from URL params:', {
-      q, location, minPrice, maxPrice, roomType, sortParam
-    });
-    
     setSearchQuery(q);
     setFilters({
       location: location || q, // Use q as location if location is empty
@@ -129,7 +125,6 @@ export default function RoomSearch() {
         setError(response.message || 'Failed to search rooms');
       }
     } catch (err) {
-      console.error('Search error:', err);
       setError('Failed to search rooms. Please try again.');
     } finally {
       setLoading(false);

@@ -71,32 +71,67 @@ const resolveImageSrc = (image: string) => {
   return `${env.IMG_BASE_URL}${normalized}`;
 };
 
-// Helper function to extract coordinates from Google Maps URL
-const extractCoordinates = (mapUrl: string): { lat: number; lng: number } | null => {
+// Helper function to convert Google Maps link to embeddable URL (NO API KEY NEEDED!)
+const convertToEmbedUrl = (mapUrl: string): string => {
   try {
-    // Extract coordinates from standard Google Maps URLs
+    // If it's already an embed URL, return as is
+    if (mapUrl.includes('/embed') || mapUrl.includes('output=embed')) {
+      return mapUrl;
+    }
+    
+    // Extract coordinates from various Google Maps URL formats
+    let lat: number | null = null;
+    let lng: number | null = null;
+    
+    // Format: @lat,lng (most common from share links)
     const coordMatch = mapUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
     if (coordMatch) {
-      return {
-        lat: parseFloat(coordMatch[1]),
-        lng: parseFloat(coordMatch[2])
-      };
+      lat = parseFloat(coordMatch[1]);
+      lng = parseFloat(coordMatch[2]);
     }
     
-    // Handle query parameters format
-    const latMatch = mapUrl.match(/[?&]lat=(-?\d+\.\d+)/);
-    const lngMatch = mapUrl.match(/[?&]lng=(-?\d+\.\d+)/);
-    if (latMatch && lngMatch) {
-      return {
-        lat: parseFloat(latMatch[1]),
-        lng: parseFloat(lngMatch[1])
-      };
+    // Format: ?q=lat,lng
+    if (!lat || !lng) {
+      const qMatch = mapUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (qMatch) {
+        lat = parseFloat(qMatch[1]);
+        lng = parseFloat(qMatch[2]);
+      }
     }
     
-    return null;
+    // Format: lat= and lng= parameters
+    if (!lat || !lng) {
+      const latMatch = mapUrl.match(/[?&]lat=(-?\d+\.\d+)/);
+      const lngMatch = mapUrl.match(/[?&]lng=(-?\d+\.\d+)/);
+      if (latMatch && lngMatch) {
+        lat = parseFloat(latMatch[1]);
+        lng = parseFloat(lngMatch[1]);
+      }
+    }
+    
+    // If coordinates found, create embed URL
+    if (lat && lng) {
+      return `https://maps.google.com/maps?q=${lat},${lng}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+    
+    // Try to extract place name or ID
+    const placeMatch = mapUrl.match(/place\/([^/]+)/);
+    if (placeMatch) {
+      const placeName = decodeURIComponent(placeMatch[1]);
+      return `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+    
+    // Try to extract query parameter
+    const queryMatch = mapUrl.match(/[?&]q=([^&]+)/);
+    if (queryMatch) {
+      return `https://maps.google.com/maps?q=${queryMatch[1]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+    
+    // Last resort: return original URL and hope it works
+    return mapUrl;
   } catch (error) {
-    console.error('Error extracting coordinates:', error);
-    return null;
+    // Fallback to Dhaka, Bangladesh
+    return 'https://maps.google.com/maps?q=23.8103,90.4125&t=&z=13&ie=UTF8&iwloc=&output=embed';
   }
 };
 
@@ -116,6 +151,7 @@ export default function RoomDetails() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   
   const { selectedDates, setSelectedDates } = useAppStore();
   const [guests, setGuests] = useState({
@@ -198,11 +234,9 @@ export default function RoomDetails() {
         setRoom(roomData);
         trackRoomView(roomData.id, roomData.price);
       } else {
-        console.error('Room not found or API error:', response);
         setRoom(null);
       }
     } catch (error) {
-      console.error('Failed to load room:', error);
       setRoom(null);
     } finally {
       setLoading(false);
@@ -469,7 +503,39 @@ export default function RoomDetails() {
             {/* About This Home */}
             <div className="space-y-3">
               <h2 className="text-xl font-bold text-gray-900">About This Home</h2>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{room.description}</p>
+              <div className="relative">
+                <div 
+                  className={`text-gray-700 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${
+                    !isDescriptionExpanded ? 'line-clamp-5' : ''
+                  }`}
+                  style={!isDescriptionExpanded ? {
+                    display: '-webkit-box',
+                    WebkitLineClamp: 5,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  } : {}}
+                >
+                  {room.description}
+                </div>
+                {room.description && room.description.length > 200 && (
+                  <button
+                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                    className="mt-3 text-brand font-semibold hover:text-brand/80 flex items-center gap-1 transition-all"
+                  >
+                    {isDescriptionExpanded ? (
+                      <>
+                        <span>Show Less</span>
+                        <ChevronLeft className="h-4 w-4 rotate-90 transition-transform" />
+                      </>
+                    ) : (
+                      <>
+                        <span>Show More</span>
+                        <ChevronRight className="h-4 w-4 rotate-90 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Facilities & Features */}
@@ -597,16 +663,11 @@ export default function RoomDetails() {
               {(backendRoom?.locationMapUrl || backendRoom?.hostId?.locationMapUrl) ? (
                 <div className="w-full h-96 rounded-xl overflow-hidden border border-gray-200 relative">
                   <iframe
-                    src={`https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${
-                      (() => {
-                        const mapUrl = backendRoom.locationMapUrl || backendRoom.hostId?.locationMapUrl || '';
-                        const coords = extractCoordinates(mapUrl);
-                        if (coords) {
-                          return `${coords.lat},${coords.lng}`;
-                        }
-                        return '23.8103,90.4125'; // Default to Dhaka
-                      })()
-                    }&zoom=15&maptype=roadmap`}
+                    src={convertToEmbedUrl(
+                      backendRoom.locationMapUrl || 
+                      backendRoom.hostId?.locationMapUrl || 
+                      ''
+                    )}
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}

@@ -56,7 +56,7 @@ export default function BookingsPage() {
         setBookings(response.data.bookings || []);
       }
     } catch (error) {
-      console.error('Failed to load bookings:', error);
+      // Error loading bookings
     } finally {
       setLoading(false);
     }

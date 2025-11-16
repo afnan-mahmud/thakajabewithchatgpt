@@ -22,6 +22,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { compressImage, createPreviewURL, formatFileSize } from '@/lib/image-compression';
 
 interface RoomFormData {
   title: string;
@@ -50,6 +51,10 @@ interface UploadedImage {
   w: number;
   h: number;
   file: File;
+  previewUrl: string;
+  uploading?: boolean;
+  originalSize?: number;
+  compressedSize?: number;
 }
 
 const AMENITIES_OPTIONS = [
@@ -72,8 +77,8 @@ export default function NewListing() {
   const [error, setError] = useState<string | null>(null);
   const [newAmenity, setNewAmenity] = useState('');
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-  const [uploadingImages, setUploadingImages] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const isUploading = uploadedImages.some(img => img.uploading);
   
   const [formData, setFormData] = useState<RoomFormData>({
     title: '',
@@ -119,34 +124,112 @@ export default function NewListing() {
       return;
     }
 
-    setUploadingImages(true);
     setError(null);
 
-    try {
-      const uploadPromises = filesToUpload.map(async (file) => {
-        const response = await api.uploads.image(file);
-        if (response.success && response.data) {
-          return {
-            url: (response.data as any).url,
-            w: 800, // Default width
-            h: 600, // Default height
-            file: file
-          };
-        }
-        throw new Error('Upload failed');
-      });
+    // Create placeholders for all images immediately
+    const startIndex = uploadedImages.length;
+    const placeholders: UploadedImage[] = filesToUpload.map((file) => ({
+      url: '',
+      w: 800,
+      h: 600,
+      file: file,
+      previewUrl: createPreviewURL(file),
+      uploading: true,
+      originalSize: file.size,
+    }));
 
-      const uploadedFiles = await Promise.all(uploadPromises);
-      setUploadedImages(prev => [...prev, ...uploadedFiles]);
+    setUploadedImages(prev => [...prev, ...placeholders]);
+
+    // Process all images in parallel for much faster upload!
+    const uploadPromises = filesToUpload.map(async (file, index) => {
+      const currentIndex = startIndex + index;
       
-      // Update form data with uploaded images
-      const newImages = uploadedFiles.map(img => ({ url: img.url, w: img.w, h: img.h }));
-      handleInputChange('images', [...formData.images, ...newImages]);
-    } catch (error) {
-      console.error('Upload error:', error);
-      setError('Failed to upload images');
-    } finally {
-      setUploadingImages(false);
+      try {
+        // Compress image before upload (optimized for speed)
+        const compressedFile = await compressImage(file, {
+          maxSizeMB: 1.5,
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 0.8
+        });
+
+        const compressedSize = compressedFile.size;
+
+        // Upload compressed image
+        const response = await api.uploads.image(compressedFile);
+        
+        if (response.success && response.data) {
+          const uploadedUrl = (response.data as any).url;
+          
+          // Update the specific image with actual URL
+          setUploadedImages(prev => {
+            const updated = [...prev];
+            if (updated[currentIndex]) {
+              updated[currentIndex] = {
+                ...updated[currentIndex],
+                url: uploadedUrl,
+                uploading: false,
+                compressedSize: compressedSize,
+              };
+            }
+            return updated;
+          });
+
+          // Return the uploaded image data
+          return { 
+            url: uploadedUrl, 
+            w: 800, 
+            h: 600,
+            success: true,
+            index: currentIndex
+          };
+        } else {
+          throw new Error(response.error || 'Upload failed');
+        }
+      } catch (error) {
+        // Mark as failed but keep placeholder
+        setUploadedImages(prev => {
+          const updated = [...prev];
+          if (updated[currentIndex]) {
+            updated[currentIndex] = {
+              ...updated[currentIndex],
+              uploading: false,
+            };
+          }
+          return updated;
+        });
+        return { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          fileName: file.name,
+          index: currentIndex
+        };
+      }
+    });
+
+    // Wait for all uploads to complete
+    const results = await Promise.all(uploadPromises);
+    
+    // Process results
+    const successfulUploads = results.filter((r): r is { url: string; w: number; h: number; success: true; index: number } => r.success === true);
+    const failedUploads = results.filter(r => r.success === false);
+
+    // Update form data with all successful uploads
+    if (successfulUploads.length > 0) {
+      handleInputChange('images', [
+        ...formData.images, 
+        ...successfulUploads.map(({ url, w, h }) => ({ url, w, h }))
+      ]);
+    }
+
+    // Remove failed uploads from the list
+    if (failedUploads.length > 0) {
+      setUploadedImages(prev => prev.filter((_, i) => 
+        !failedUploads.some(failed => failed.index === i)
+      ));
+      
+      const errorMessages = failedUploads.map(f => `${f.fileName}: ${f.error}`).join(', ');
+      setError(`Some uploads failed: ${errorMessages}`);
     }
   };
 
@@ -209,8 +292,7 @@ export default function NewListing() {
         setError(response.message || 'Failed to create listing');
       }
     } catch (error) {
-      console.error('Failed to create listing:', error);
-      setError('Failed to create listing');
+      setError('Failed to create listing. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -295,19 +377,19 @@ export default function NewListing() {
             </div>
 
             <div>
-              <Label htmlFor="locationMapUrl">Google Maps URL</Label>
+              <Label htmlFor="locationMapUrl">Google Maps URL (Optional)</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   id="locationMapUrl"
                   value={formData.locationMapUrl || ''}
                   onChange={(e) => handleInputChange('locationMapUrl', e.target.value)}
-                  placeholder="https://maps.google.com/..."
+                  placeholder="https://maps.google.com/@23.8103,90.4125,15z"
                   className="pl-10"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Paste the Google Maps share link for your property location. This will be shown to guests after booking confirmation.
+                📍 Open Google Maps → Find your location → Click "Share" → Copy link and paste here. The map will be shown to guests after booking confirmation.
               </p>
             </div>
 
@@ -431,13 +513,13 @@ export default function NewListing() {
                 onChange={(e) => handleImageUpload(e.target.files)}
                 className="hidden"
                 id="image-upload"
-                disabled={uploadingImages || uploadedImages.length >= 15}
+                disabled={isUploading || uploadedImages.length >= 15}
               />
               
-              <label htmlFor="image-upload" className="cursor-pointer">
+              <label htmlFor="image-upload" className={`cursor-pointer ${isUploading || uploadedImages.length >= 15 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <div className="space-y-2">
                   <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                    {uploadingImages ? (
+                    {isUploading ? (
                       <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
                     ) : (
                       <Upload className="h-6 w-6 text-gray-400" />
@@ -445,23 +527,28 @@ export default function NewListing() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {uploadingImages ? 'Uploading...' : 'Click to upload or drag and drop'}
+                      {isUploading ? '🚀 Uploading images in parallel...' : 'Click to upload or drag and drop'}
                     </p>
                     <p className="text-xs text-gray-500">
-                      PNG, JPG, GIF up to 5MB each
+                      PNG, JPG, GIF - Images will be automatically optimized (parallel upload for speed!)
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {uploadedImages.length}/15 images uploaded
+                    <p className="text-xs font-medium text-gray-700 mt-1">
+                      {uploadedImages.filter(img => !img.uploading).length}/15 images uploaded
+                      {isUploading && (
+                        <span className="text-blue-600 animate-pulse">
+                          {' '}• {uploadedImages.filter(img => img.uploading).length} uploading simultaneously
+                        </span>
+                      )}
                     </p>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={uploadingImages || uploadedImages.length >= 15}
+                    disabled={isUploading || uploadedImages.length >= 15}
                   >
                     <ImageIcon className="h-4 w-4 mr-2" />
-                    Choose Images
+                    {isUploading ? 'Uploading...' : 'Choose Images'}
                   </Button>
                 </div>
               </label>
@@ -472,24 +559,52 @@ export default function NewListing() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {uploadedImages.map((image, index) => (
                   <div key={index} className="relative group">
-                    <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                    <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200">
                       <img
-                        src={URL.createObjectURL(image.file)}
+                        src={image.previewUrl}
                         alt={`Uploaded image ${index + 1}`}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover transition-opacity ${
+                          image.uploading ? 'opacity-50' : 'opacity-100'
+                        }`}
                       />
+                      {image.uploading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <div className="bg-white rounded-full p-3 shadow-lg">
+                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => handleRemoveUploadedImage(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <div className="mt-1 text-xs text-gray-500 text-center">
-                      {image.file.name}
+                    {!image.uploading && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleRemoveUploadedImage(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <div className="mt-1 space-y-1">
+                      <div className="text-xs text-gray-700 text-center truncate font-medium">
+                        {image.file.name}
+                      </div>
+                      {image.compressedSize && image.originalSize && (
+                        <div className="text-xs text-center">
+                          <span className="text-red-500 line-through">{formatFileSize(image.originalSize)}</span>
+                          <span className="mx-1">→</span>
+                          <span className="text-green-600 font-semibold">{formatFileSize(image.compressedSize)}</span>
+                          <div className="text-green-600 font-medium">
+                            {Math.round((1 - image.compressedSize / image.originalSize) * 100)}% smaller
+                          </div>
+                        </div>
+                      )}
+                      {image.uploading && (
+                        <div className="text-xs text-blue-600 text-center font-medium animate-pulse">
+                          Compressing & uploading...
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -4,13 +4,39 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { isValidEmail, isValidPassword, sanitizeInput, sanitizeHtml } from '../utils/validation';
 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, email, password } = req.body;
 
+    // Validate required fields
+    if (!name || !email || !password) {
+      return next(new AppError('Name, email, and password are required', 400));
+    }
+
+    // Sanitize inputs
+    const sanitizedName = sanitizeHtml(String(name).trim());
+    const sanitizedEmail = String(email).toLowerCase().trim();
+
+    // Validate email format
+    if (!isValidEmail(sanitizedEmail)) {
+      return next(new AppError('Invalid email format', 400));
+    }
+
+    // Validate password strength
+    const passwordValidation = isValidPassword(password);
+    if (!passwordValidation.valid) {
+      return next(new AppError(passwordValidation.message || 'Invalid password', 400));
+    }
+
+    // Validate name length
+    if (sanitizedName.length < 2 || sanitizedName.length > 100) {
+      return next(new AppError('Name must be between 2 and 100 characters', 400));
+    }
+
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: sanitizedEmail });
     if (existingUser) {
       return next(new AppError('User already exists with this email', 400));
     }
@@ -21,16 +47,22 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
     // Create user
     const user = await User.create({
-      name,
-      email,
+      name: sanitizedName,
+      email: sanitizedEmail,
       passwordHash: hashedPassword,
       role: 'guest'
     });
 
+    // Check JWT_SECRET
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured');
+      return next(new AppError('Server configuration error', 500));
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -56,8 +88,21 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   try {
     const { email, password } = req.body;
 
+    // Validate required fields
+    if (!email || !password) {
+      return next(new AppError('Email and password are required', 400));
+    }
+
+    // Sanitize email
+    const sanitizedEmail = String(email).toLowerCase().trim();
+
+    // Validate email format
+    if (!isValidEmail(sanitizedEmail)) {
+      return next(new AppError('Invalid email format', 400));
+    }
+
     // Find user
-    const user = await User.findOne({ email }).select('+passwordHash');
+    const user = await User.findOne({ email: sanitizedEmail }).select('+passwordHash');
     if (!user) {
       return next(new AppError('Invalid credentials', 401));
     }
@@ -68,10 +113,16 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       return next(new AppError('Invalid credentials', 401));
     }
 
+    // Check JWT_SECRET
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured');
+      return next(new AppError('Server configuration error', 500));
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 

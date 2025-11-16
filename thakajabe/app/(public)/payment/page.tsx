@@ -40,7 +40,7 @@ function PaymentContent() {
         setRoom(response.data.product);
       }
     } catch (error) {
-      console.error('Failed to load room:', error);
+      // Error loading room
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,6 @@ function PaymentContent() {
         alert('Failed to create payment session');
       }
     } catch (error) {
-      console.error('Payment error:', error);
       alert('Payment failed. Please try again.');
     } finally {
       setProcessing(false);
