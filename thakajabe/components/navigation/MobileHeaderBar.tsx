@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Hotel, Home } from 'lucide-react';
 import { MobileSearchTrigger } from '@/components/search/MobileSearchTrigger';
 
-export default function MobileHeaderBar() {
+function MobileHeaderBarContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentType = searchParams.get('type') || 'apartments';
@@ -101,5 +101,13 @@ export default function MobileHeaderBar() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MobileHeaderBar() {
+  return (
+    <Suspense fallback={<div className="h-16 md:hidden bg-white" />}>
+      <MobileHeaderBarContent />
+    </Suspense>
   );
 }

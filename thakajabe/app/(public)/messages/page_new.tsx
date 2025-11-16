@@ -290,19 +290,19 @@ export default function MessagesPage() {
                   )}
 
                   {selectedThread.messages.map((message: any) => {
-                    const isUser = message.senderRole === 'user';
+                    const isGuest = message.senderRole === 'guest';
                     return (
-                      <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                      <div key={message.id} className={`flex ${isGuest ? 'justify-end' : 'justify-start'}`}>
                         <div className="max-w-[75%]">
-                          {!isUser && (
+                          {!isGuest && (
                             <div className="flex items-center gap-2 mb-1">
                               <div className="w-6 h-6 rounded-full bg-brand flex items-center justify-center text-white text-xs">H</div>
                               <span className="text-xs text-gray-600">Host</span>
                             </div>
                           )}
-                          <div className={`rounded-2xl px-4 py-2 ${isUser ? 'bg-brand text-white rounded-tr-sm' : 'bg-white text-gray-900 rounded-tl-sm border'}`}>
+                          <div className={`rounded-2xl px-4 py-2 ${isGuest ? 'bg-brand text-white rounded-tr-sm' : 'bg-white text-gray-900 rounded-tl-sm border'}`}>
                             <p className="text-sm">{message.text}</p>
-                            <p className={`text-xs mt-1 ${isUser ? 'text-white/70' : 'text-gray-500'}`}>{formatMessageTime(message.createdAt)}</p>
+                            <p className={`text-xs mt-1 ${isGuest ? 'text-white/70' : 'text-gray-500'}`}>{formatMessageTime(message.createdAt)}</p>
                           </div>
                         </div>
                       </div>
