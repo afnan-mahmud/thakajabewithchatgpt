@@ -30,6 +30,9 @@ import blogRoutes from './routes/blogs';
 const app: express.Application = express();
 const PORT = process.env.PORT || 8080;
 
+// Trust proxy to get real client IP (important for rate limiting behind Nginx/Cloudflare)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -42,13 +45,17 @@ app.use(cors({
 // Rate limiting - Adjusted for better user experience
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Increased to 500 requests per 15 minutes (33 req/min)
+  max: 1000, // Increased to 1000 requests per 15 minutes (66 req/min) for production
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Use real client IP from proxy
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress || 'unknown';
+  },
   skip: (req) => {
     // Skip rate limiting for static assets
     return req.path.startsWith('/uploads/');
@@ -62,6 +69,10 @@ const authLimiter = rateLimit({
     success: false,
     message: 'Too many authentication attempts, please try again later.'
   },
+  // Use real client IP from proxy
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress || 'unknown';
+  },
   skipSuccessfulRequests: true, // Don't count successful auth requests
 });
 
@@ -72,14 +83,22 @@ const uploadLimiter = rateLimit({
     success: false,
     message: 'Too many upload requests, please try again later.'
   },
+  // Use real client IP from proxy
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress || 'unknown';
+  },
 });
 
 const searchLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 searches per minute (increased for development)
+  max: 300, // 300 searches per minute (increased for production - homepage makes multiple calls)
   message: {
     success: false,
     message: 'Too many search requests, please slow down.'
+  },
+  // Use real client IP from proxy
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress || 'unknown';
   },
   skip: (req) => {
     // Skip rate limiting in development mode
